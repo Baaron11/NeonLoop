@@ -12,9 +12,26 @@ import Combine
 // MARK: - App State
 
 enum AppState: Equatable {
-    case home
-    case lobby
-    case playing
+    case launcher           // Game selection menu
+    case home               // Legacy home (single game menu)
+    case lobby              // Multiplayer lobby
+    case playing            // Active game
+    case placeholderGame(GameInfo)  // Placeholder for unimplemented games
+}
+
+extension AppState {
+    // Custom Equatable for GameInfo comparison
+    static func == (lhs: AppState, rhs: AppState) -> Bool {
+        switch (lhs, rhs) {
+        case (.launcher, .launcher): return true
+        case (.home, .home): return true
+        case (.lobby, .lobby): return true
+        case (.playing, .playing): return true
+        case (.placeholderGame(let lhsGame), .placeholderGame(let rhsGame)):
+            return lhsGame.id == rhsGame.id
+        default: return false
+        }
+    }
 }
 
 // MARK: - Game Coordinator
@@ -23,7 +40,7 @@ enum AppState: Equatable {
 final class GameCoordinator: ObservableObject {
     // MARK: - Properties
 
-    var appState: AppState = .home
+    var appState: AppState = .launcher
     var matchState: MatchState
     var aiOpponent: AIOpponent?
 
@@ -49,6 +66,11 @@ final class GameCoordinator: ObservableObject {
 
     // MARK: - Navigation
 
+    func goToLauncher() {
+        stopGameLoop()
+        appState = .launcher
+    }
+
     func goToHome() {
         stopGameLoop()
         appState = .home
@@ -56,6 +78,10 @@ final class GameCoordinator: ObservableObject {
 
     func goToLobby() {
         appState = .lobby
+    }
+
+    func launchPlaceholderGame(_ gameInfo: GameInfo) {
+        appState = .placeholderGame(gameInfo)
     }
 
     func startSinglePlayerGame(difficulty: Difficulty, mode: GameMode = .oneVsOne) {
