@@ -145,7 +145,7 @@ final class MatchState {
         state.puck = newPuck
 
         // Check goal
-        let puckCircle = Circle(position: newPuck.position, radius: config.puckRadius)
+        let puckCircle = GameCircle(position: newPuck.position, radius: config.puckRadius)
         if let goal = checkGoal(puckCircle, config: config) {
             handleGoal(scorer: goal == .player ? .player : .opponent)
             return
@@ -173,8 +173,8 @@ final class MatchState {
     }
 
     private func checkPaddleCollision(paddle: Position, playerId: PlayerID) {
-        let puckCircle = Circle(position: state.puck.position, radius: config.puckRadius)
-        let paddleCircle = Circle(position: paddle, radius: config.paddleRadius)
+        let puckCircle = GameCircle(position: state.puck.position, radius: config.puckRadius)
+        let paddleCircle = GameCircle(position: paddle, radius: config.paddleRadius)
 
         guard checkCircleCollision(puckCircle, paddleCircle) else { return }
 
