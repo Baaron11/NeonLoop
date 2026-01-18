@@ -20,9 +20,9 @@ func clamp(_ value: CGFloat, min minValue: CGFloat, max maxValue: CGFloat) -> CG
     Swift.min(Swift.max(value, minValue), maxValue)
 }
 
-// MARK: - Circle Type
+// MARK: - GameCircle Type
 
-struct Circle {
+struct GameCircle {
     var x: CGFloat
     var y: CGFloat
     var radius: CGFloat
@@ -46,7 +46,7 @@ struct Circle {
 
 // MARK: - Collision Detection
 
-func checkCircleCollision(_ c1: Circle, _ c2: Circle) -> Bool {
+func checkCircleCollision(_ c1: GameCircle, _ c2: GameCircle) -> Bool {
     distance(c1.position, c2.position) < c1.radius + c2.radius
 }
 
@@ -61,7 +61,7 @@ struct WallCollisionResult {
     }
 }
 
-func checkWallCollision(_ entity: Circle, config: GameConfig) -> WallCollisionResult {
+func checkWallCollision(_ entity: GameCircle, config: GameConfig) -> WallCollisionResult {
     WallCollisionResult(
         hitLeft: entity.x - entity.radius <= 0,
         hitRight: entity.x + entity.radius >= config.tableWidth,
@@ -75,7 +75,7 @@ enum GoalResult {
     case opponent // Opponent scored (puck in player's goal)
 }
 
-func checkGoal(_ puck: Circle, config: GameConfig) -> GoalResult? {
+func checkGoal(_ puck: GameCircle, config: GameConfig) -> GoalResult? {
     let goalLeft = (config.tableWidth - config.goalWidth) / 2
     let goalRight = goalLeft + config.goalWidth
 
@@ -99,9 +99,9 @@ func checkGoal(_ puck: Circle, config: GameConfig) -> GoalResult? {
 // MARK: - Collision Resolution
 
 func resolvePaddlePuckCollision(
-    puck: Circle,
+    puck: GameCircle,
     puckVelocity: Velocity,
-    paddle: Circle,
+    paddle: GameCircle,
     hitCount: Int,
     config: GameConfig
 ) -> Velocity {
@@ -128,7 +128,7 @@ func resolvePaddlePuckCollision(
     return Velocity(dx: nx * speed, dy: ny * speed)
 }
 
-func separateCircles(movable: Circle, stationary: Circle) -> Position {
+func separateCircles(movable: GameCircle, stationary: GameCircle) -> Position {
     let dx = movable.x - stationary.x
     let dy = movable.y - stationary.y
     let dist = sqrt(dx * dx + dy * dy)
