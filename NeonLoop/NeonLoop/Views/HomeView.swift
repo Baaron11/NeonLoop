@@ -191,18 +191,18 @@ struct AnimatedPuck: View {
     var body: some View {
         ZStack {
             // Outer glow
-            Circle()
-                .fill(.cyan.opacity(0.2 * glowIntensity))
+            SwiftUI.Circle()
+                .fill(Color.cyan.opacity(0.2 * glowIntensity))
                 .blur(radius: 20)
 
             // Middle ring
-            Circle()
-                .fill(.cyan.opacity(0.4 * glowIntensity))
+            SwiftUI.Circle()
+                .fill(Color.cyan.opacity(0.4 * glowIntensity))
                 .padding(8)
 
             // Inner puck
-            Circle()
-                .fill(.cyan)
+            SwiftUI.Circle()
+                .fill(Color.cyan)
                 .padding(16)
         }
         .onAppear {

@@ -18,35 +18,113 @@ protocol NetMessageProtocol: Codable {
 // MARK: - Player Joined Message
 
 struct PlayerJoinedMessage: NetMessageProtocol {
-    let messageType: NetMessageType = .playerJoined
+    var messageType: NetMessageType { .playerJoined }
     let senderId: String
     let timestamp: TimeInterval
     let playerName: String
     let playerId: PlayerID
+
+    enum CodingKeys: String, CodingKey {
+        case messageType, senderId, timestamp, playerName, playerId
+    }
+
+    init(senderId: String, timestamp: TimeInterval, playerName: String, playerId: PlayerID) {
+        self.senderId = senderId
+        self.timestamp = timestamp
+        self.playerName = playerName
+        self.playerId = playerId
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        senderId = try container.decode(String.self, forKey: .senderId)
+        timestamp = try container.decode(TimeInterval.self, forKey: .timestamp)
+        playerName = try container.decode(String.self, forKey: .playerName)
+        playerId = try container.decode(PlayerID.self, forKey: .playerId)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(messageType, forKey: .messageType)
+        try container.encode(senderId, forKey: .senderId)
+        try container.encode(timestamp, forKey: .timestamp)
+        try container.encode(playerName, forKey: .playerName)
+        try container.encode(playerId, forKey: .playerId)
+    }
 }
 
 // MARK: - Player Left Message
 
 struct PlayerLeftMessage: NetMessageProtocol {
-    let messageType: NetMessageType = .playerLeft
+    var messageType: NetMessageType { .playerLeft }
     let senderId: String
     let timestamp: TimeInterval
+
+    enum CodingKeys: String, CodingKey {
+        case messageType, senderId, timestamp
+    }
+
+    init(senderId: String, timestamp: TimeInterval) {
+        self.senderId = senderId
+        self.timestamp = timestamp
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        senderId = try container.decode(String.self, forKey: .senderId)
+        timestamp = try container.decode(TimeInterval.self, forKey: .timestamp)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(messageType, forKey: .messageType)
+        try container.encode(senderId, forKey: .senderId)
+        try container.encode(timestamp, forKey: .timestamp)
+    }
 }
 
 // MARK: - Game Start Message
 
 struct GameStartMessage: NetMessageProtocol {
-    let messageType: NetMessageType = .gameStart
+    var messageType: NetMessageType { .gameStart }
     let senderId: String
     let timestamp: TimeInterval
     let config: GameConfig
     let initialState: GameState
+
+    enum CodingKeys: String, CodingKey {
+        case messageType, senderId, timestamp, config, initialState
+    }
+
+    init(senderId: String, timestamp: TimeInterval, config: GameConfig, initialState: GameState) {
+        self.senderId = senderId
+        self.timestamp = timestamp
+        self.config = config
+        self.initialState = initialState
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        senderId = try container.decode(String.self, forKey: .senderId)
+        timestamp = try container.decode(TimeInterval.self, forKey: .timestamp)
+        config = try container.decode(GameConfig.self, forKey: .config)
+        initialState = try container.decode(GameState.self, forKey: .initialState)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(messageType, forKey: .messageType)
+        try container.encode(senderId, forKey: .senderId)
+        try container.encode(timestamp, forKey: .timestamp)
+        try container.encode(config, forKey: .config)
+        try container.encode(initialState, forKey: .initialState)
+    }
 }
 
 // MARK: - Game End Message
 
 struct GameEndMessage: NetMessageProtocol {
-    let messageType: NetMessageType = .gameEnd
+    var messageType: NetMessageType { .gameEnd }
     let senderId: String
     let timestamp: TimeInterval
     let winner: PlayerID
