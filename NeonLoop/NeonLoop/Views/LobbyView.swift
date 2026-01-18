@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct LobbyView: View {
-    @EnvironmentObject var coordinator: GameCoordinator
+    @Environment(GameCoordinator.self) var coordinator
     @State private var showHostSheet = false
     @State private var showJoinSheet = false
     @State private var roomCode = ""
@@ -286,5 +286,5 @@ struct JoinGameSheet: View {
 
 #Preview {
     LobbyView()
-        .environmentObject(GameCoordinator())
+        .environment(GameCoordinator())
 }

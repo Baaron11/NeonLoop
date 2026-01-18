@@ -158,11 +158,11 @@ enum NeonLoopGameRegistry {
             id: "tilt_table",
             name: "Tilt Table",
             subtitle: "The Deciding Game",
-            description: "Players move around the ring to tilt the table. Guide the ball into the hole to win!",
-            minPlayers: 2,
+            description: "Players move around the ring to tilt the table. Guide the ball into the hole to select the next game!",
+            minPlayers: 1,
             maxPlayers: 6,
             inputType: .position,
-            isImplemented: false,
+            isImplemented: true,
             iconName: "circle.and.line.horizontal",
             accentColor: .pink
         )

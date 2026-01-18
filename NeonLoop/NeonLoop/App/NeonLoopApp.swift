@@ -9,12 +9,12 @@ import SwiftUI
 
 @main
 struct NeonLoopApp: App {
-    @StateObject private var gameCoordinator = GameCoordinator()
+    @State private var gameCoordinator = GameCoordinator()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environmentObject(gameCoordinator)
+                .environment(gameCoordinator)
                 .preferredColorScheme(.dark)
         }
     }
@@ -23,7 +23,7 @@ struct NeonLoopApp: App {
 // MARK: - Content View (Root Navigation)
 
 struct ContentView: View {
-    @EnvironmentObject var coordinator: GameCoordinator
+    @Environment(GameCoordinator.self) var coordinator
 
     var body: some View {
         Group {
@@ -36,6 +36,8 @@ struct ContentView: View {
                 LobbyView()
             case .playing:
                 ControllerView()
+            case .playingTiltTable:
+                TiltTableGameView()
             case .placeholderGame(let gameInfo):
                 PlaceholderGameView(gameInfo: gameInfo)
             }
@@ -48,5 +50,5 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
-        .environmentObject(GameCoordinator())
+        .environment(GameCoordinator())
 }

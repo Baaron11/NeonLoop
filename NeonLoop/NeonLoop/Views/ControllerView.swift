@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct ControllerView: View {
-    @EnvironmentObject var coordinator: GameCoordinator
+    @Environment(GameCoordinator.self) var coordinator
 
     var body: some View {
         GeometryReader { geometry in
@@ -525,5 +525,5 @@ struct GameOverOverlay: View {
 
 #Preview {
     ControllerView()
-        .environmentObject(GameCoordinator())
+        .environment(GameCoordinator())
 }
