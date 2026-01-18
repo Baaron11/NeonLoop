@@ -39,7 +39,7 @@ struct ControllerView: View {
                     GameControls(
                         isPaused: coordinator.matchState.isPaused,
                         onPause: { coordinator.handlePause() },
-                        onExit: { coordinator.goToHome() }
+                        onExit: { coordinator.goToLauncher() }
                     )
                     .padding(.bottom, 8)
                 }
@@ -48,7 +48,7 @@ struct ControllerView: View {
                 if coordinator.matchState.isPaused {
                     PauseOverlay(
                         onResume: { coordinator.handlePause() },
-                        onExit: { coordinator.goToHome() }
+                        onExit: { coordinator.goToLauncher() }
                     )
                 }
 
@@ -59,7 +59,7 @@ struct ControllerView: View {
                         playerScore: coordinator.matchState.playerScore,
                         opponentScore: coordinator.matchState.opponentScore,
                         onRematch: { coordinator.handleRematch() },
-                        onExit: { coordinator.goToHome() }
+                        onExit: { coordinator.goToLauncher() }
                     )
                 }
             }

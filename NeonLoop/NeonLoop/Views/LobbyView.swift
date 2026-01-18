@@ -95,7 +95,7 @@ struct LobbyView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button {
-                        coordinator.goToHome()
+                        coordinator.goToLauncher()
                     } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "chevron.left")

@@ -28,12 +28,16 @@ struct ContentView: View {
     var body: some View {
         Group {
             switch coordinator.appState {
+            case .launcher:
+                GameLauncherView()
             case .home:
                 HomeView()
             case .lobby:
                 LobbyView()
             case .playing:
                 ControllerView()
+            case .placeholderGame(let gameInfo):
+                PlaceholderGameView(gameInfo: gameInfo)
             }
         }
         .animation(.easeInOut(duration: 0.3), value: coordinator.appState)
