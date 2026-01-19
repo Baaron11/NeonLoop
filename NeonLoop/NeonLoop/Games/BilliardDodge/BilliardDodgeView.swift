@@ -119,18 +119,13 @@ struct BilliardDodgeTableView: View {
             let availableHeight = geometry.size.height
 
             // Calculate size to fit while maintaining aspect ratio
-            let tableWidth: CGFloat
-            let tableHeight: CGFloat
-
-            if availableWidth / availableHeight > aspectRatio {
-                // Height constrained
-                tableHeight = availableHeight
-                tableWidth = tableHeight * aspectRatio
-            } else {
-                // Width constrained
-                tableWidth = availableWidth
-                tableHeight = tableWidth / aspectRatio
-            }
+            let isHeightConstrained = availableWidth / availableHeight > aspectRatio
+            let tableWidth: CGFloat = isHeightConstrained
+                ? availableHeight * aspectRatio
+                : availableWidth
+            let tableHeight: CGFloat = isHeightConstrained
+                ? availableHeight
+                : availableWidth / aspectRatio
 
             let scaleX = tableWidth / config.tableWidth
             let scaleY = tableHeight / config.tableHeight
