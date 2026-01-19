@@ -61,8 +61,14 @@ struct GameLauncherView: View {
         .sheet(isPresented: $showDifficultySheet) {
             if let game = selectedGame {
                 GameDifficultySheet(game: game) { difficulty in
+                    print("🎯 [GameLauncherView] Difficulty selected: \(difficulty) for \(game.id)")
                     showDifficultySheet = false
-                    launchGame(game, difficulty: difficulty)
+                    // Add a small delay to ensure the sheet dismissal animation completes
+                    // before navigating. This prevents SwiftUI view hierarchy issues.
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        print("🎯 [GameLauncherView] Launching game after delay")
+                        launchGame(game, difficulty: difficulty)
+                    }
                 }
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)

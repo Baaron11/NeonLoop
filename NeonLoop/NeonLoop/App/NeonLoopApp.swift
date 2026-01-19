@@ -26,17 +26,24 @@ struct ContentView: View {
     @Environment(GameCoordinator.self) var coordinator
 
     var body: some View {
+        let _ = print("📱 [ContentView] body EVALUATED - appState: \(coordinator.appState)")
+        let _ = print("📱 [ContentView]   - tiltTableCoordinator: \(coordinator.tiltTableCoordinator != nil ? "EXISTS" : "NIL")")
+
         Group {
             switch coordinator.appState {
             case .launcher:
+                let _ = print("📱 [ContentView]   → Showing GameLauncherView")
                 GameLauncherView()
             case .home:
                 HomeView()
             case .lobby:
                 LobbyView()
             case .playing:
+                let _ = print("📱 [ContentView]   → Showing ControllerView (Polygon Hockey)")
                 ControllerView()
             case .playingTiltTable:
+                let _ = print("📱 [ContentView]   → Showing TiltTableGameView")
+                let _ = print("📱 [ContentView]   → tiltTableCoordinator at switch: \(coordinator.tiltTableCoordinator != nil ? "EXISTS" : "NIL")")
                 TiltTableGameView()
             case .placeholderGame(let gameInfo):
                 PlaceholderGameView(gameInfo: gameInfo)

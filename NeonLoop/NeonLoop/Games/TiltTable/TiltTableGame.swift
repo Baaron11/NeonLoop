@@ -21,7 +21,9 @@ final class TiltTableGameCoordinator {
     private var countdownTimer: Timer?
 
     init(holes: [TiltTableHole]? = nil) {
+        print("🎱 [TiltTableGameCoordinator] init() CALLED")
         self.state = TiltTableState(holes: holes)
+        print("🎱 [TiltTableGameCoordinator]   - state created, phase: \(state.phase)")
     }
 
     // MARK: - Game Setup
@@ -36,9 +38,12 @@ final class TiltTableGameCoordinator {
     }
 
     func setupSinglePlayer() {
+        print("🎱 [TiltTableGameCoordinator] setupSinglePlayer() CALLED")
         setupGame(playerCount: 1)
         // For single player, add ghost players for balance
         addGhostPlayers()
+        print("🎱 [TiltTableGameCoordinator]   - Players after setup: \(state.players.count)")
+        print("🎱 [TiltTableGameCoordinator]   - Player IDs: \(state.players.map { $0.id })")
     }
 
     private func addGhostPlayers() {
@@ -59,41 +64,57 @@ final class TiltTableGameCoordinator {
     // MARK: - Game Control
 
     func startGame() {
+        print("🎱 [TiltTableGameCoordinator] startGame() CALLED")
+        print("🎱 [TiltTableGameCoordinator]   - Current phase before: \(state.phase)")
         state.startCountdown()
+        print("🎱 [TiltTableGameCoordinator]   - Phase after startCountdown: \(state.phase)")
         startCountdownSequence()
+        print("🎱 [TiltTableGameCoordinator]   - Countdown sequence started, timer scheduled")
     }
 
     private func startCountdownSequence() {
+        print("🎱 [TiltTableGameCoordinator] startCountdownSequence() CALLED")
         countdownTimer?.invalidate()
         state.countdownValue = 3
         state.phase = .countdown(3)
+        print("🎱 [TiltTableGameCoordinator]   - countdownValue: \(state.countdownValue), phase: \(state.phase)")
 
         countdownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] timer in
             guard let self = self else {
+                print("🎱 [TiltTableGameCoordinator] ⚠️ Timer fired but self is nil!")
                 timer.invalidate()
                 return
             }
 
             self.state.countdownValue -= 1
+            print("🎱 [TiltTableGameCoordinator] Timer tick: countdownValue = \(self.state.countdownValue)")
 
             if self.state.countdownValue > 0 {
                 self.state.phase = .countdown(self.state.countdownValue)
+                print("🎱 [TiltTableGameCoordinator]   - Phase: \(self.state.phase)")
             } else if self.state.countdownValue == 0 {
                 self.state.phase = .countdown(0)  // "GO!"
+                print("🎱 [TiltTableGameCoordinator]   - Phase: GO!")
             } else {
+                print("🎱 [TiltTableGameCoordinator]   - Countdown complete, starting game loop!")
                 timer.invalidate()
                 self.countdownTimer = nil
                 self.state.startPlaying()
                 self.startGameLoop()
+                print("🎱 [TiltTableGameCoordinator]   - isRunning: \(self.isRunning)")
             }
         }
+        print("🎱 [TiltTableGameCoordinator]   - Timer created: \(countdownTimer != nil ? "EXISTS" : "NIL")")
     }
 
     func stopGame() {
+        print("🎱 [TiltTableGameCoordinator] stopGame() CALLED")
+        print("🎱 [TiltTableGameCoordinator]   - isRunning before: \(isRunning)")
         stopGameLoop()
         countdownTimer?.invalidate()
         countdownTimer = nil
         isRunning = false
+        print("🎱 [TiltTableGameCoordinator]   - isRunning after: \(isRunning)")
     }
 
     // MARK: - Game Loop
@@ -262,13 +283,19 @@ struct TiltTableGameView: View {
         }
     }
 
-    private var gameCoordinator: TiltTableGameCoordinator? {
-        mainCoordinator.tiltTableCoordinator
-    }
-
     var body: some View {
+        let _ = print("🎮 [TiltTableGameView] body EVALUATED")
+        let _ = print("🎮 [TiltTableGameView]   - mainCoordinator.appState: \(mainCoordinator.appState)")
+        let _ = print("🎮 [TiltTableGameView]   - mainCoordinator.tiltTableCoordinator: \(mainCoordinator.tiltTableCoordinator != nil ? "EXISTS" : "NIL")")
+
+        // Access tiltTableCoordinator DIRECTLY in body to ensure proper @Observable tracking
+        // Using a computed property can sometimes break observation tracking
+        let coordinator = mainCoordinator.tiltTableCoordinator
+
         GeometryReader { geometry in
-            if let coordinator = gameCoordinator {
+            if let coordinator = coordinator {
+                let _ = print("🎮 [TiltTableGameView]   - coordinator.state.phase: \(coordinator.state.phase)")
+                let _ = print("🎮 [TiltTableGameView]   - coordinator.isRunning: \(coordinator.isRunning)")
                 ZStack {
                     // Background
                     Color.black
@@ -325,11 +352,15 @@ struct TiltTableGameView: View {
                     }
                 }
                 .onAppear {
+                    print("🎮 [TiltTableGameView] Main content onAppear")
+                    print("🎮 [TiltTableGameView]   - coordinator.state.phase: \(coordinator.state.phase)")
+                    print("🎮 [TiltTableGameView]   - coordinator.isRunning: \(coordinator.isRunning)")
                     if inputMode == .tilt {
                         motionManager.startMonitoring()
                     }
                 }
                 .onDisappear {
+                    print("🎮 [TiltTableGameView] Main content onDisappear")
                     motionManager.stopMonitoring()
                 }
                 .onChange(of: inputMode) { _, newMode in
@@ -347,10 +378,27 @@ struct TiltTableGameView: View {
                 }
             } else {
                 // Fallback if coordinator not ready
+                let _ = print("🎮 [TiltTableGameView] ⚠️ COORDINATOR IS NIL - showing fallback")
                 Color.black
                     .ignoresSafeArea()
-                ProgressView()
-                    .tint(.cyan)
+                VStack {
+                    ProgressView()
+                        .tint(.cyan)
+                    Text("Loading Tilt Table...")
+                        .foregroundStyle(.gray)
+                        .font(.system(size: 12, design: .monospaced))
+                        .padding(.top, 8)
+                }
+                .onAppear {
+                    print("🎮 [TiltTableGameView] Fallback view onAppear - coordinator still nil!")
+                    print("🎮 [TiltTableGameView]   - Will initialize coordinator now...")
+                    // If coordinator is nil when view appears, initialize it
+                    // This handles race conditions where the view renders before
+                    // the coordinator is set
+                    if mainCoordinator.tiltTableCoordinator == nil {
+                        mainCoordinator.initializeTiltTableIfNeeded()
+                    }
+                }
             }
         }
     }

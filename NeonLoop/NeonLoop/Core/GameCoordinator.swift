@@ -65,16 +65,23 @@ final class GameCoordinator {
     // MARK: - Initialization
 
     init() {
+        print("🏁 [GameCoordinator] init() CALLED")
         matchState = MatchState()
         aiOpponent = AIOpponent(difficulty: difficulty, config: matchState.config)
+        print("🏁 [GameCoordinator]   - appState: \(appState)")
+        print("🏁 [GameCoordinator]   - tiltTableCoordinator: \(tiltTableCoordinator != nil ? "EXISTS" : "NIL")")
     }
 
     // MARK: - Navigation
 
     func goToLauncher() {
+        print("🔵 [GameCoordinator] goToLauncher() called")
+        print("🔵 [GameCoordinator]   - Current appState: \(appState)")
+        print("🔵 [GameCoordinator]   - tiltTableCoordinator before stop: \(tiltTableCoordinator != nil ? "EXISTS" : "NIL")")
         stopGameLoop()
         stopTiltTable()
         appState = .launcher
+        print("🔵 [GameCoordinator]   - New appState: \(appState)")
     }
 
     func goToHome() {
@@ -91,23 +98,64 @@ final class GameCoordinator {
     }
 
     func launchTiltTable() {
+        print("🟢 [GameCoordinator] launchTiltTable() CALLED")
+        print("🟢 [GameCoordinator]   - Current appState: \(appState)")
+        print("🟢 [GameCoordinator]   - tiltTableCoordinator before: \(tiltTableCoordinator != nil ? "EXISTS" : "NIL")")
+
         stopGameLoop()
 
         // Initialize the Tilt Table game coordinator and start the game
         // This ensures the game is ready before the view appears
+        print("🟢 [GameCoordinator]   - Creating TiltTableGameCoordinator...")
         tiltTableCoordinator = TiltTableGameCoordinator()
-        tiltTableCoordinator?.setupSinglePlayer()
-        tiltTableCoordinator?.startGame()
+        print("🟢 [GameCoordinator]   - tiltTableCoordinator after create: \(tiltTableCoordinator != nil ? "EXISTS" : "NIL")")
 
+        print("🟢 [GameCoordinator]   - Calling setupSinglePlayer()...")
+        tiltTableCoordinator?.setupSinglePlayer()
+        print("🟢 [GameCoordinator]   - Players count: \(tiltTableCoordinator?.state.players.count ?? -1)")
+
+        print("🟢 [GameCoordinator]   - Calling startGame()...")
+        tiltTableCoordinator?.startGame()
+        print("🟢 [GameCoordinator]   - Phase after startGame: \(String(describing: tiltTableCoordinator?.state.phase))")
+        print("🟢 [GameCoordinator]   - isRunning: \(tiltTableCoordinator?.isRunning ?? false)")
+
+        print("🟢 [GameCoordinator]   - Setting appState to .playingTiltTable")
         appState = .playingTiltTable
+        print("🟢 [GameCoordinator] launchTiltTable() COMPLETE")
     }
 
     func stopTiltTable() {
+        print("🔴 [GameCoordinator] stopTiltTable() called")
+        print("🔴 [GameCoordinator]   - tiltTableCoordinator: \(tiltTableCoordinator != nil ? "EXISTS" : "NIL")")
         tiltTableCoordinator?.stopGame()
         tiltTableCoordinator = nil
+        print("🔴 [GameCoordinator]   - tiltTableCoordinator after nil: \(tiltTableCoordinator != nil ? "EXISTS" : "NIL")")
+    }
+
+    /// Initialize Tilt Table coordinator without changing app state.
+    /// Called as a fallback when the view appears before the coordinator is ready.
+    func initializeTiltTableIfNeeded() {
+        print("🟣 [GameCoordinator] initializeTiltTableIfNeeded() called")
+        print("🟣 [GameCoordinator]   - tiltTableCoordinator: \(tiltTableCoordinator != nil ? "EXISTS" : "NIL")")
+
+        guard tiltTableCoordinator == nil else {
+            print("🟣 [GameCoordinator]   - Coordinator already exists, skipping")
+            return
+        }
+
+        print("🟣 [GameCoordinator]   - Creating TiltTableGameCoordinator...")
+        tiltTableCoordinator = TiltTableGameCoordinator()
+        tiltTableCoordinator?.setupSinglePlayer()
+        tiltTableCoordinator?.startGame()
+        print("🟣 [GameCoordinator]   - Coordinator created and started")
+        print("🟣 [GameCoordinator]   - Phase: \(String(describing: tiltTableCoordinator?.state.phase))")
     }
 
     func startSinglePlayerGame(difficulty: Difficulty, mode: GameMode = .oneVsOne) {
+        print("🟡 [GameCoordinator] startSinglePlayerGame() CALLED (Polygon Hockey)")
+        print("🟡 [GameCoordinator]   - difficulty: \(difficulty), mode: \(mode)")
+        print("🟡 [GameCoordinator]   - Current appState: \(appState)")
+
         self.difficulty = difficulty
         self.gameMode = mode
         self.isSinglePlayer = true
@@ -120,8 +168,12 @@ final class GameCoordinator {
         aiOpponent = AIOpponent(difficulty: difficulty, config: matchState.config)
 
         matchState.startGame()
+        print("🟡 [GameCoordinator]   - Setting appState to .playing")
         appState = .playing
+        print("🟡 [GameCoordinator]   - Starting game loop...")
         startGameLoop()
+        print("🟡 [GameCoordinator]   - displayLink: \(displayLink != nil ? "EXISTS" : "NIL")")
+        print("🟡 [GameCoordinator] startSinglePlayerGame() COMPLETE")
     }
 
     func startMultiplayerGame(mode: GameMode = .oneVsOne) {
