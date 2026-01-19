@@ -252,7 +252,7 @@ enum FoosballPhase: Equatable {
 
 // MARK: - Goal Result
 
-enum GoalResult: Equatable {
+enum FoosballGoalResult: Equatable {
     case playerScored  // Ball in AI goal
     case aiScored      // Ball in player goal
 }
@@ -553,7 +553,7 @@ final class FoosballState {
         ball.lastHitBy = nil
     }
 
-    func goalScored(by result: GoalResult) {
+    func goalScored(by result: FoosballGoalResult) {
         switch result {
         case .playerScored:
             playerScore += 1
