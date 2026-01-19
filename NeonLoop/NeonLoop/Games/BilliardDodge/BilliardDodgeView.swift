@@ -144,13 +144,19 @@ struct BilliardDodgeTableView: View {
                         )
                 }
 
-                // CPU shot preview line (during aiming phase)
+                // CPU shot preview lines for all cue balls (during aiming phase)
                 if state.phase.isAimingPhase || state.phase.isActive {
-                    CPUShotPreview(
-                        state: state,
-                        scaleX: scaleX,
-                        scaleY: scaleY
-                    )
+                    ForEach(Array(state.cueBalls.enumerated()), id: \.element.id) { index, cueBall in
+                        if !cueBall.isPocketed && index < state.cpuShots.count {
+                            CPUShotPreviewForCueBall(
+                                cueBall: cueBall,
+                                shot: state.cpuShots[index],
+                                config: config,
+                                scaleX: scaleX,
+                                scaleY: scaleY
+                            )
+                        }
+                    }
                 }
 
                 // Player move previews (during aiming phase)
@@ -170,12 +176,21 @@ struct BilliardDodgeTableView: View {
                     }
                 }
 
-                // Cue ball
-                if !state.cueBall.isPocketed {
-                    BilliardBallView(ball: state.cueBall, config: config)
+                // All cue balls
+                ForEach(state.cueBalls.filter { !$0.isPocketed }) { cueBall in
+                    BilliardBallView(ball: cueBall, config: config)
                         .position(
-                            x: state.cueBall.position.x * scaleX,
-                            y: state.cueBall.position.y * scaleY
+                            x: cueBall.position.x * scaleX,
+                            y: cueBall.position.y * scaleY
+                        )
+                }
+
+                // Obstacle balls
+                ForEach(state.obstacleBalls) { obstacle in
+                    ObstacleBallView(ball: obstacle, config: config)
+                        .position(
+                            x: obstacle.position.x * scaleX,
+                            y: obstacle.position.y * scaleY
                         )
                 }
 
@@ -477,6 +492,132 @@ struct CPUShotPreview: View {
 
                 context.stroke(arrowPath, with: .color(.white.opacity(0.6)), lineWidth: 2)
             }
+        }
+    }
+}
+
+// MARK: - CPU Shot Preview for Specific Cue Ball
+
+struct CPUShotPreviewForCueBall: View {
+    let cueBall: BilliardBall
+    let shot: CPUShot
+    let config: BilliardDodgeConfig
+    let scaleX: CGFloat
+    let scaleY: CGFloat
+
+    var body: some View {
+        let trajectory = BilliardDodgePhysics.predictTrajectory(
+            from: cueBall.position,
+            angle: shot.angle,
+            power: shot.power,
+            config: config,
+            maxPoints: 40,
+            maxBounces: 2
+        )
+
+        Canvas { context, size in
+            guard trajectory.count > 1 else { return }
+
+            // Draw dashed line
+            var path = Path()
+            path.move(to: CGPoint(
+                x: trajectory[0].x * scaleX,
+                y: trajectory[0].y * scaleY
+            ))
+
+            for point in trajectory.dropFirst() {
+                path.addLine(to: CGPoint(
+                    x: point.x * scaleX,
+                    y: point.y * scaleY
+                ))
+            }
+
+            context.stroke(
+                path,
+                with: .color(.white.opacity(0.6)),
+                style: StrokeStyle(lineWidth: 2, dash: [8, 4])
+            )
+
+            // Draw arrow head at end
+            if let lastPoint = trajectory.last, trajectory.count > 1 {
+                let secondLast = trajectory[trajectory.count - 2]
+                let angle = atan2(
+                    lastPoint.y - secondLast.y,
+                    lastPoint.x - secondLast.x
+                )
+
+                let arrowSize: CGFloat = 8
+                let arrowPoint = CGPoint(
+                    x: lastPoint.x * scaleX,
+                    y: lastPoint.y * scaleY
+                )
+
+                var arrowPath = Path()
+                arrowPath.move(to: arrowPoint)
+                arrowPath.addLine(to: CGPoint(
+                    x: arrowPoint.x - arrowSize * cos(angle - .pi / 6),
+                    y: arrowPoint.y - arrowSize * sin(angle - .pi / 6)
+                ))
+                arrowPath.move(to: arrowPoint)
+                arrowPath.addLine(to: CGPoint(
+                    x: arrowPoint.x - arrowSize * cos(angle + .pi / 6),
+                    y: arrowPoint.y - arrowSize * sin(angle + .pi / 6)
+                ))
+
+                context.stroke(arrowPath, with: .color(.white.opacity(0.6)), lineWidth: 2)
+            }
+        }
+    }
+}
+
+// MARK: - Obstacle Ball View
+
+struct ObstacleBallView: View {
+    let ball: BilliardBall
+    let config: BilliardDodgeConfig
+
+    var body: some View {
+        ZStack {
+            // Outer glow (subtle gray)
+            Circle()
+                .fill(Color.gray.opacity(0.2))
+                .frame(width: config.ballRadius * 3, height: config.ballRadius * 3)
+                .blur(radius: 6)
+
+            // Ball shadow
+            Ellipse()
+                .fill(.black.opacity(0.4))
+                .frame(width: config.ballRadius * 2.2, height: config.ballRadius * 1.2)
+                .offset(x: 2, y: 4)
+                .blur(radius: 3)
+
+            // Ball body (gray)
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [Color(white: 0.6), Color(white: 0.45), Color(white: 0.35)],
+                        center: .init(x: 0.35, y: 0.3),
+                        startRadius: 0,
+                        endRadius: config.ballRadius
+                    )
+                )
+                .frame(width: config.ballRadius * 2, height: config.ballRadius * 2)
+                .shadow(color: Color.gray.opacity(0.4), radius: 4)
+
+            // Stripe pattern
+            Circle()
+                .stroke(
+                    Color(white: 0.4),
+                    style: StrokeStyle(lineWidth: config.ballRadius * 0.3)
+                )
+                .frame(width: config.ballRadius * 1.2, height: config.ballRadius * 1.2)
+                .rotationEffect(.degrees(45))
+
+            // Specular highlight
+            Circle()
+                .fill(.white.opacity(0.6))
+                .frame(width: config.ballRadius * 0.5, height: config.ballRadius * 0.5)
+                .offset(x: -config.ballRadius * 0.3, y: -config.ballRadius * 0.3)
         }
     }
 }
