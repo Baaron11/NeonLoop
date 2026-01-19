@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct HomeView: View {
-    @EnvironmentObject var coordinator: GameCoordinator
+    @Environment(GameCoordinator.self) var coordinator
     @State private var selectedMode: GameMode = .oneVsOne
     @State private var selectedDifficulty: Difficulty = .medium
     @State private var showModeSheet = false
@@ -244,5 +244,5 @@ struct GridBackground: View {
 
 #Preview {
     HomeView()
-        .environmentObject(GameCoordinator())
+        .environment(GameCoordinator())
 }

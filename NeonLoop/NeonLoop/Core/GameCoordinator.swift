@@ -15,7 +15,8 @@ enum AppState: Equatable {
     case launcher           // Game selection menu
     case home               // Legacy home (single game menu)
     case lobby              // Multiplayer lobby
-    case playing            // Active game
+    case playing            // Active game (Polygon Hockey)
+    case playingTiltTable   // Tilt Table game
     case placeholderGame(GameInfo)  // Placeholder for unimplemented games
 }
 
@@ -27,6 +28,7 @@ extension AppState {
         case (.home, .home): return true
         case (.lobby, .lobby): return true
         case (.playing, .playing): return true
+        case (.playingTiltTable, .playingTiltTable): return true
         case (.placeholderGame(let lhsGame), .placeholderGame(let rhsGame)):
             return lhsGame.id == rhsGame.id
         default: return false
@@ -37,7 +39,7 @@ extension AppState {
 // MARK: - Game Coordinator
 
 @Observable
-final class GameCoordinator: ObservableObject {
+final class GameCoordinator {
     // MARK: - Properties
 
     var appState: AppState = .launcher
@@ -82,6 +84,11 @@ final class GameCoordinator: ObservableObject {
 
     func launchPlaceholderGame(_ gameInfo: GameInfo) {
         appState = .placeholderGame(gameInfo)
+    }
+
+    func launchTiltTable() {
+        stopGameLoop()
+        appState = .playingTiltTable
     }
 
     func startSinglePlayerGame(difficulty: Difficulty, mode: GameMode = .oneVsOne) {

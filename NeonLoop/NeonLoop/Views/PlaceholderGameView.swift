@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct PlaceholderGameView: View {
-    @EnvironmentObject var coordinator: GameCoordinator
+    @Environment(GameCoordinator.self) var coordinator
     let gameInfo: GameInfo
 
     @State private var pulseAnimation = false
@@ -253,12 +253,12 @@ private struct StatItem: View {
     PlaceholderGameView(
         gameInfo: NeonLoopGameRegistry.allGames[1]
     )
-    .environmentObject(GameCoordinator())
+    .environment(GameCoordinator())
 }
 
 #Preview("Billiard Dodge") {
     PlaceholderGameView(
         gameInfo: NeonLoopGameRegistry.allGames[3]
     )
-    .environmentObject(GameCoordinator())
+    .environment(GameCoordinator())
 }

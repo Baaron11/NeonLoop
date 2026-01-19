@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct GameLauncherView: View {
-    @EnvironmentObject var coordinator: GameCoordinator
+    @Environment(GameCoordinator.self) var coordinator
     @State private var selectedGame: GameInfo?
     @State private var showDifficultySheet = false
 
@@ -84,6 +84,8 @@ struct GameLauncherView: View {
         switch game.id {
         case "polygon_hockey":
             coordinator.startSinglePlayerGame(difficulty: difficulty)
+        case "tilt_table":
+            coordinator.launchTiltTable()
         default:
             // Future: Launch specific games with their own coordinators
             coordinator.startSinglePlayerGame(difficulty: difficulty)
@@ -401,5 +403,5 @@ private struct MultiplayerButton: View {
 
 #Preview {
     GameLauncherView()
-        .environmentObject(GameCoordinator())
+        .environment(GameCoordinator())
 }
