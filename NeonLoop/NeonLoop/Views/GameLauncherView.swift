@@ -95,6 +95,8 @@ struct GameLauncherView: View {
             coordinator.launchTiltTable()
         case "billiard_dodge":
             coordinator.launchBilliardDodge()
+        case "horde_defense":
+            coordinator.launchHordeDefense()
         default:
             // Future: Launch specific games with their own coordinators
             coordinator.startSinglePlayerGame(difficulty: difficulty)
