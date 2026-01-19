@@ -396,21 +396,3 @@ enum HordeDefensePhysics {
         return (closestPoint, d)
     }
 }
-
-// MARK: - CGVector Extension
-
-extension CGVector {
-    var magnitude: CGFloat {
-        sqrt(dx * dx + dy * dy)
-    }
-
-    var normalized: CGVector {
-        let mag = magnitude
-        guard mag > 0 else { return .zero }
-        return CGVector(dx: dx / mag, dy: dy / mag)
-    }
-
-    func scaled(by factor: CGFloat) -> CGVector {
-        CGVector(dx: dx * factor, dy: dy * factor)
-    }
-}
