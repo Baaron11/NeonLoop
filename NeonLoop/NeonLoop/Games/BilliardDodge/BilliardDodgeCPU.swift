@@ -17,26 +17,237 @@ enum BilliardDodgeCPU {
 
     // MARK: - Shot Calculation
 
-    /// Calculates the CPU's shot for the current round
+    /// Calculates the CPU's shot for the current round (primary cue ball)
     static func calculateShot(state: BilliardDodgeState) -> CPUShot {
+        let shots = calculateAllShots(state: state)
+        return shots.first ?? .empty
+    }
+
+    /// Calculates shots for all cue balls
+    static func calculateAllShots(state: BilliardDodgeState) -> [CPUShot] {
         let difficulty = CPUDifficulty.forRound(state.currentRound)
         let activeBalls = state.activeBalls
 
         guard !activeBalls.isEmpty else {
-            // No targets, shoot randomly
+            // No targets, shoot randomly for all cue balls
+            return state.cueBalls.map { _ in randomShot(state: state, difficulty: difficulty) }
+        }
+
+        var shots: [CPUShot] = []
+
+        // Assign different targets to different cue balls for more interesting gameplay
+        let usedTargets = NSMutableSet()
+
+        for (index, cueBall) in state.cueBalls.enumerated() where !cueBall.isPocketed {
+            // Find best target for this cue ball (avoiding already targeted balls at higher difficulties)
+            let availableTargets: [BilliardBall]
+            if difficulty.rawValue >= CPUDifficulty.medium.rawValue && activeBalls.count > 1 {
+                availableTargets = activeBalls.filter { !usedTargets.contains($0.id) }
+            } else {
+                availableTargets = activeBalls
+            }
+
+            let targetsToUse = availableTargets.isEmpty ? activeBalls : availableTargets
+
+            let shot = calculateShotForCueBall(
+                cueBall: cueBall,
+                targets: targetsToUse,
+                state: state,
+                difficulty: difficulty,
+                cueBallIndex: index
+            )
+
+            shots.append(shot)
+
+            // Mark target as used
+            if let targetId = shot.targetBallId {
+                usedTargets.add(targetId)
+            }
+        }
+
+        return shots
+    }
+
+    /// Calculates a shot for a specific cue ball
+    private static func calculateShotForCueBall(
+        cueBall: BilliardBall,
+        targets: [BilliardBall],
+        state: BilliardDodgeState,
+        difficulty: CPUDifficulty,
+        cueBallIndex: Int
+    ) -> CPUShot {
+        switch difficulty {
+        case .easy:
+            return easyShotForCueBall(cueBall: cueBall, state: state, targets: targets, difficulty: difficulty)
+        case .medium:
+            return mediumShotForCueBall(cueBall: cueBall, state: state, targets: targets, difficulty: difficulty)
+        case .hard:
+            return hardShotForCueBall(cueBall: cueBall, state: state, targets: targets, difficulty: difficulty)
+        case .expert:
+            return expertShotForCueBall(cueBall: cueBall, state: state, targets: targets, difficulty: difficulty)
+        }
+    }
+
+    // MARK: - Shot Functions for Specific Cue Ball
+
+    private static func easyShotForCueBall(cueBall: BilliardBall, state: BilliardDodgeState, targets: [BilliardBall], difficulty: CPUDifficulty) -> CPUShot {
+        guard let target = targets.randomElement() else {
             return randomShot(state: state, difficulty: difficulty)
         }
 
-        switch difficulty {
-        case .easy:
-            return easyShot(state: state, targets: activeBalls, difficulty: difficulty)
-        case .medium:
-            return mediumShot(state: state, targets: activeBalls, difficulty: difficulty)
-        case .hard:
-            return hardShot(state: state, targets: activeBalls, difficulty: difficulty)
-        case .expert:
-            return expertShot(state: state, targets: activeBalls, difficulty: difficulty)
+        let baseAngle = BilliardDodgePhysics.angleToTarget(from: cueBall.position, to: target.position)
+        let inaccuracy = applyInaccuracy(baseAngle: baseAngle, accuracy: difficulty.accuracy)
+        let power = CGFloat.random(in: difficulty.shotPower)
+
+        return CPUShot(angle: inaccuracy, power: power, targetBallId: target.id)
+    }
+
+    private static func mediumShotForCueBall(cueBall: BilliardBall, state: BilliardDodgeState, targets: [BilliardBall], difficulty: CPUDifficulty) -> CPUShot {
+        let target = findBestTargetByPocketProximity(targets: targets, config: state.config)
+        let pocket = BilliardDodgePhysics.closestPocket(to: target.position, config: state.config)
+        let angle = calculatePocketingAngleFromPosition(
+            cueBallPos: cueBall.position,
+            targetBall: target.position,
+            pocket: pocket,
+            config: state.config
+        )
+        let finalAngle = applyInaccuracy(baseAngle: angle, accuracy: difficulty.accuracy)
+        let power = CGFloat.random(in: difficulty.shotPower)
+
+        return CPUShot(angle: finalAngle, power: power, targetBallId: target.id)
+    }
+
+    private static func hardShotForCueBall(cueBall: BilliardBall, state: BilliardDodgeState, targets: [BilliardBall], difficulty: CPUDifficulty) -> CPUShot {
+        var bestShot: CPUShot?
+        var bestScore: CGFloat = -1
+
+        for target in targets {
+            for pocket in state.config.pocketPositions() {
+                let score = evaluateShot(
+                    cueBall: cueBall.position,
+                    target: target.position,
+                    pocket: pocket,
+                    config: state.config
+                )
+
+                if score > bestScore {
+                    bestScore = score
+                    let angle = calculatePocketingAngleFromPosition(
+                        cueBallPos: cueBall.position,
+                        targetBall: target.position,
+                        pocket: pocket,
+                        config: state.config
+                    )
+                    let power = calculateOptimalPower(
+                        distance: BilliardDodgePhysics.distance(from: cueBall.position, to: target.position),
+                        config: state.config
+                    )
+                    bestShot = CPUShot(angle: angle, power: min(power, difficulty.shotPower.upperBound), targetBallId: target.id)
+                }
+            }
         }
+
+        guard var shot = bestShot else {
+            return mediumShotForCueBall(cueBall: cueBall, state: state, targets: targets, difficulty: difficulty)
+        }
+
+        let finalAngle = applyInaccuracy(baseAngle: shot.angle, accuracy: difficulty.accuracy)
+        shot = CPUShot(angle: finalAngle, power: shot.power, targetBallId: shot.targetBallId)
+
+        return shot
+    }
+
+    private static func expertShotForCueBall(cueBall: BilliardBall, state: BilliardDodgeState, targets: [BilliardBall], difficulty: CPUDifficulty) -> CPUShot {
+        var predictedTargets: [(ball: BilliardBall, predictedPos: CGPoint)] = []
+
+        for target in targets {
+            guard let playerId = target.playerId,
+                  let move = state.playerMoves[playerId],
+                  move.force > 0 else {
+                predictedTargets.append((target, target.position))
+                continue
+            }
+
+            let predictedMove = CGVector(
+                dx: cos(move.angle) * move.force * state.config.maxForce * 0.5,
+                dy: sin(move.angle) * move.force * state.config.maxForce * 0.5
+            )
+            let predictedPos = CGPoint(
+                x: target.position.x + predictedMove.dx,
+                y: target.position.y + predictedMove.dy
+            )
+            predictedTargets.append((target, predictedPos))
+        }
+
+        var bestShot: CPUShot?
+        var bestScore: CGFloat = -1
+
+        for (target, predictedPos) in predictedTargets {
+            for pocket in state.config.pocketPositions() {
+                let directScore = evaluateShot(
+                    cueBall: cueBall.position,
+                    target: predictedPos,
+                    pocket: pocket,
+                    config: state.config
+                )
+
+                let bankScore = evaluateBankShot(
+                    cueBall: cueBall.position,
+                    target: predictedPos,
+                    pocket: pocket,
+                    config: state.config
+                )
+
+                let score = max(directScore, bankScore * 0.8)
+
+                if score > bestScore {
+                    bestScore = score
+
+                    let angle: CGFloat
+                    let power: CGFloat
+
+                    if bankScore > directScore {
+                        (angle, power) = calculateBankShot(
+                            cueBall: cueBall.position,
+                            target: predictedPos,
+                            pocket: pocket,
+                            config: state.config
+                        )
+                    } else {
+                        angle = calculatePocketingAngleFromPosition(
+                            cueBallPos: cueBall.position,
+                            targetBall: predictedPos,
+                            pocket: pocket,
+                            config: state.config
+                        )
+                        power = calculateOptimalPower(
+                            distance: BilliardDodgePhysics.distance(from: cueBall.position, to: predictedPos),
+                            config: state.config
+                        )
+                    }
+
+                    bestShot = CPUShot(angle: angle, power: min(power, difficulty.shotPower.upperBound), targetBallId: target.id)
+                }
+            }
+        }
+
+        guard var shot = bestShot else {
+            return hardShotForCueBall(cueBall: cueBall, state: state, targets: targets, difficulty: difficulty)
+        }
+
+        let finalAngle = applyInaccuracy(baseAngle: shot.angle, accuracy: difficulty.accuracy)
+        shot = CPUShot(angle: finalAngle, power: shot.power, targetBallId: shot.targetBallId)
+
+        return shot
+    }
+
+    private static func calculatePocketingAngleFromPosition(cueBallPos: CGPoint, targetBall: CGPoint, pocket: CGPoint, config: BilliardDodgeConfig) -> CGFloat {
+        let targetToPocketAngle = BilliardDodgePhysics.angleToTarget(from: targetBall, to: pocket)
+        let ghostBallPos = CGPoint(
+            x: targetBall.x - cos(targetToPocketAngle) * config.ballRadius * 2,
+            y: targetBall.y - sin(targetToPocketAngle) * config.ballRadius * 2
+        )
+        return BilliardDodgePhysics.angleToTarget(from: cueBallPos, to: ghostBallPos)
     }
 
     // MARK: - Easy AI (Rounds 1-3)

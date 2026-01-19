@@ -21,14 +21,25 @@ enum BilliardDodgePhysics {
     static func step(state: BilliardDodgeState, deltaTime: CGFloat) {
         let config = state.config
 
-        // Update cue ball
-        updateBall(&state.cueBall, config: config, deltaTime: deltaTime)
+        // Update all cue balls
+        for i in state.cueBalls.indices {
+            if !state.cueBalls[i].isPocketed {
+                updateBall(&state.cueBalls[i], config: config, deltaTime: deltaTime)
+            }
+        }
+        // Keep primary cueBall in sync
+        state.cueBall = state.cueBalls[0]
 
         // Update player balls
         for i in state.balls.indices {
             if !state.balls[i].isEliminated && !state.balls[i].isPocketed {
                 updateBall(&state.balls[i], config: config, deltaTime: deltaTime)
             }
+        }
+
+        // Update obstacle balls (with high friction)
+        for i in state.obstacleBalls.indices {
+            updateObstacleBall(&state.obstacleBalls[i], config: config, deltaTime: deltaTime)
         }
 
         // Handle ball-to-ball collisions
@@ -49,6 +60,23 @@ enum BilliardDodgePhysics {
 
         // Apply friction
         ball.velocity = ball.velocity.scaled(by: pow(config.friction, deltaTime))
+
+        // Stop very slow balls
+        if ball.velocity.magnitude < 0.05 {
+            ball.velocity = .zero
+        }
+
+        // Handle rail bounces
+        handleRailBounce(&ball, config: config)
+    }
+
+    private static func updateObstacleBall(_ ball: inout BilliardBall, config: BilliardDodgeConfig, deltaTime: CGFloat) {
+        // Apply velocity
+        ball.position.x += ball.velocity.dx * deltaTime
+        ball.position.y += ball.velocity.dy * deltaTime
+
+        // Apply high friction for obstacles (they stop quickly)
+        ball.velocity = ball.velocity.scaled(by: pow(config.obstacleFriction, deltaTime))
 
         // Stop very slow balls
         if ball.velocity.magnitude < 0.05 {
@@ -95,11 +123,18 @@ enum BilliardDodgePhysics {
     private static func handleCollisions(state: BilliardDodgeState, config: BilliardDodgeConfig) {
         var allBalls: [BilliardBall] = []
 
-        // Collect all active balls including cue ball
-        if !state.cueBall.isPocketed {
-            allBalls.append(state.cueBall)
+        // Collect all active cue balls
+        for ball in state.cueBalls where !ball.isPocketed {
+            allBalls.append(ball)
         }
+
+        // Collect all active player balls
         for ball in state.balls where !ball.isPocketed && !ball.isEliminated {
+            allBalls.append(ball)
+        }
+
+        // Collect obstacle balls (they can always be hit)
+        for ball in state.obstacleBalls {
             allBalls.append(ball)
         }
 
@@ -120,12 +155,22 @@ enum BilliardDodgePhysics {
 
         // Write back to state
         for ball in allBalls {
-            if ball.id == state.cueBall.id {
-                state.cueBall = ball
-            } else if let index = state.balls.firstIndex(where: { $0.id == ball.id }) {
+            // Check if it's a cue ball
+            if let index = state.cueBalls.firstIndex(where: { $0.id == ball.id }) {
+                state.cueBalls[index] = ball
+            }
+            // Check if it's a player ball
+            else if let index = state.balls.firstIndex(where: { $0.id == ball.id }) {
                 state.balls[index] = ball
             }
+            // Check if it's an obstacle ball
+            else if let index = state.obstacleBalls.firstIndex(where: { $0.id == ball.id }) {
+                state.obstacleBalls[index] = ball
+            }
         }
+
+        // Keep primary cueBall in sync
+        state.cueBall = state.cueBalls[0]
     }
 
     private static func checkAndResolveCollision(_ ball1: inout BilliardBall, _ ball2: inout BilliardBall, config: BilliardDodgeConfig) -> Bool {
@@ -179,16 +224,21 @@ enum BilliardDodgePhysics {
     private static func checkPockets(state: BilliardDodgeState, config: BilliardDodgeConfig) {
         let pockets = config.pocketPositions()
 
-        // Check cue ball
-        if !state.cueBall.isPocketed {
-            for pocket in pockets {
-                if isInPocket(ball: state.cueBall, pocket: pocket, config: config) {
-                    state.cueBall.isPocketed = true
-                    state.cueBall.velocity = .zero
-                    break
+        // Check all cue balls
+        for i in state.cueBalls.indices {
+            if !state.cueBalls[i].isPocketed {
+                for pocket in pockets {
+                    if isInPocket(ball: state.cueBalls[i], pocket: pocket, config: config) {
+                        state.cueBalls[i].isPocketed = true
+                        state.cueBalls[i].velocity = .zero
+                        break
+                    }
                 }
             }
         }
+
+        // Keep primary cueBall in sync
+        state.cueBall = state.cueBalls[0]
 
         // Check player balls
         for i in state.balls.indices {
@@ -204,6 +254,20 @@ enum BilliardDodgePhysics {
                     if let playerId = state.balls[i].playerId {
                         state.eliminatedPlayers.insert(playerId)
                     }
+                    break
+                }
+            }
+        }
+
+        // Check obstacle balls - respawn if pocketed
+        for i in state.obstacleBalls.indices {
+            for pocket in pockets {
+                if isInPocket(ball: state.obstacleBalls[i], pocket: pocket, config: config) {
+                    // Respawn obstacle at center area
+                    let respawnX = config.tableWidth * CGFloat.random(in: 0.4...0.6)
+                    let respawnY = config.tableHeight * CGFloat.random(in: 0.3...0.7)
+                    state.obstacleBalls[i].position = CGPoint(x: respawnX, y: respawnY)
+                    state.obstacleBalls[i].velocity = .zero
                     break
                 }
             }

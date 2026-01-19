@@ -55,9 +55,10 @@ final class BilliardDodgeGameCoordinator {
     }
 
     func startRound() {
-        // Calculate CPU shot for this round
-        let cpuShot = BilliardDodgeCPU.calculateShot(state: state)
-        state.cpuShot = cpuShot
+        // Calculate CPU shots for all cue balls
+        let cpuShots = BilliardDodgeCPU.calculateAllShots(state: state)
+        state.cpuShots = cpuShots
+        state.cpuShot = cpuShots.first ?? .empty
 
         // Start the countdown
         state.startRound()
@@ -198,23 +199,53 @@ final class BilliardDodgeGameCoordinator {
         // Continue to next round
         state.currentRound += 1
 
-        // Only reset cue ball position if it was pocketed (scratched)
-        // Otherwise, keep it where physics left it
-        if state.cueBall.isPocketed {
-            state.cueBall.position = CGPoint(x: state.config.tableWidth * 0.25, y: state.config.tableHeight / 2)
-            state.cueBall.isPocketed = false
+        // Reset all cue balls
+        let cueBallPositions = generateCueBallPositions(count: state.cueBalls.count)
+        for i in state.cueBalls.indices {
+            // Only reset cue ball position if it was pocketed (scratched)
+            if state.cueBalls[i].isPocketed {
+                state.cueBalls[i].position = cueBallPositions[i]
+                state.cueBalls[i].isPocketed = false
+            }
+            state.cueBalls[i].velocity = .zero
         }
-        state.cueBall.velocity = .zero
+
+        // Keep primary cueBall in sync
+        state.cueBall = state.cueBalls[0]
 
         // Reset player ball velocities but keep their positions
-        // Only clear isPocketed for balls that were pocketed this round but not eliminated
         for i in state.balls.indices {
             state.balls[i].velocity = .zero
-            // Don't reset isPocketed here - eliminated players stay pocketed
-            // The isPocketed flag for active players is used to detect elimination
+        }
+
+        // Reset obstacle ball velocities
+        for i in state.obstacleBalls.indices {
+            state.obstacleBalls[i].velocity = .zero
         }
 
         startRound()
+    }
+
+    private func generateCueBallPositions(count: Int) -> [CGPoint] {
+        let centerX = state.config.tableWidth * 0.25
+        let centerY = state.config.tableHeight / 2
+        let spacing = state.config.ballRadius * 4
+
+        switch count {
+        case 1:
+            return [CGPoint(x: centerX, y: centerY)]
+        case 2:
+            return [
+                CGPoint(x: centerX, y: centerY - spacing / 2),
+                CGPoint(x: centerX, y: centerY + spacing / 2)
+            ]
+        default:
+            return [
+                CGPoint(x: centerX, y: centerY - spacing),
+                CGPoint(x: centerX, y: centerY),
+                CGPoint(x: centerX, y: centerY + spacing)
+            ]
+        }
     }
 
     // MARK: - Player Input
@@ -302,7 +333,10 @@ extension BilliardDodgeGameCoordinator: NeonLoopGame {
                 friction: state.config.friction,
                 countdownDuration: state.config.countdownDuration,
                 railBounce: state.config.railBounce,
-                ballBounce: state.config.ballBounce
+                ballBounce: state.config.ballBounce,
+                cueBallCount: state.config.cueBallCount,
+                obstacleBallCount: state.config.obstacleBallCount,
+                obstacleFriction: state.config.obstacleFriction
             )
         default:
             break

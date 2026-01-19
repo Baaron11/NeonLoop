@@ -6,6 +6,7 @@
  */
 
 import SwiftUI
+import UIKit
 
 struct GameLauncherView: View {
     @Environment(GameCoordinator.self) var coordinator
@@ -231,6 +232,8 @@ private struct GameDifficultySheet: View {
     let game: GameInfo
     let onSelect: (Difficulty) -> Void
 
+    @State private var selectedDifficulty: Difficulty?
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 24) {
@@ -271,9 +274,11 @@ private struct GameDifficultySheet: View {
                     ForEach(Difficulty.allCases, id: \.self) { difficulty in
                         DifficultyOptionButton(
                             difficulty: difficulty,
-                            accentColor: game.accentColor
+                            accentColor: game.accentColor,
+                            isSelected: selectedDifficulty == difficulty,
+                            otherSelected: selectedDifficulty != nil && selectedDifficulty != difficulty
                         ) {
-                            onSelect(difficulty)
+                            handleDifficultySelection(difficulty)
                         }
                     }
                 }
@@ -284,6 +289,22 @@ private struct GameDifficultySheet: View {
             .padding(.top, 24)
             .navigationTitle("Start Game")
             .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+
+    private func handleDifficultySelection(_ difficulty: Difficulty) {
+        // Trigger haptic feedback
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.impactOccurred()
+
+        // Animate selection
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+            selectedDifficulty = difficulty
+        }
+
+        // Brief delay to let animation play before proceeding
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            onSelect(difficulty)
         }
     }
 }
@@ -315,7 +336,11 @@ private struct PlayerCountBadge: View {
 private struct DifficultyOptionButton: View {
     let difficulty: Difficulty
     let accentColor: Color
+    var isSelected: Bool = false
+    var otherSelected: Bool = false
     let action: () -> Void
+
+    @State private var glowAnimation = false
 
     private var difficultyColor: Color {
         switch difficulty {
@@ -346,11 +371,38 @@ private struct DifficultyOptionButton: View {
             .padding()
             .frame(maxWidth: .infinity)
             .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(difficultyColor, lineWidth: 2)
+                ZStack {
+                    // Glow effect when selected
+                    if isSelected {
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(difficultyColor.opacity(0.2))
+
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(difficultyColor, lineWidth: 3)
+                            .blur(radius: 4)
+                            .scaleEffect(glowAnimation ? 1.05 : 1.0)
+                    }
+
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(difficultyColor, lineWidth: isSelected ? 3 : 2)
+                }
             )
+            .scaleEffect(isSelected ? 1.05 : 1.0)
+            .opacity(otherSelected ? 0.4 : 1.0)
         }
         .buttonStyle(.plain)
+        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isSelected)
+        .animation(.easeInOut(duration: 0.2), value: otherSelected)
+        .onChange(of: isSelected) { _, newValue in
+            if newValue {
+                // Start glow pulse animation
+                withAnimation(.easeInOut(duration: 0.3).repeatCount(2, autoreverses: true)) {
+                    glowAnimation = true
+                }
+            } else {
+                glowAnimation = false
+            }
+        }
     }
 
     private var difficultyLevel: Int {
