@@ -39,6 +39,9 @@ enum BilliardDodgePhysics {
             // Check pockets
             checkPockets(state: state, config: config)
         }
+
+        // Post notification for visual effects sync (trails, etc.)
+        NotificationCenter.default.post(name: .billiardPhysicsUpdate, object: nil)
     }
 
     /// Moves all balls by the given delta time
@@ -411,4 +414,11 @@ enum BilliardDodgePhysics {
         let dy = p2.y - p1.y
         return sqrt(dx * dx + dy * dy)
     }
+}
+
+// MARK: - Notification Names (shared with view)
+
+extension Notification.Name {
+    /// Posted when physics step completes (for visual effects sync)
+    /// Note: Also defined in BilliardDodgeView.swift for convenience
 }
