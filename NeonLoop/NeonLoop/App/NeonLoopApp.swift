@@ -45,6 +45,10 @@ struct ContentView: View {
                 let _ = print("📱 [ContentView]   → Showing TiltTableGameView")
                 let _ = print("📱 [ContentView]   → tiltTableCoordinator at switch: \(coordinator.tiltTableCoordinator != nil ? "EXISTS" : "NIL")")
                 TiltTableGameView()
+            case .playingBilliardDodge:
+                let _ = print("📱 [ContentView]   → Showing BilliardDodgeGameView")
+                let _ = print("📱 [ContentView]   → billiardDodgeCoordinator at switch: \(coordinator.billiardDodgeCoordinator != nil ? "EXISTS" : "NIL")")
+                BilliardDodgeGameView()
             case .placeholderGame(let gameInfo):
                 PlaceholderGameView(gameInfo: gameInfo)
             }
