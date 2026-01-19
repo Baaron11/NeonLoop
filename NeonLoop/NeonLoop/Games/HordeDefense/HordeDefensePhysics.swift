@@ -2,10 +2,12 @@
  * HordeDefense Physics - Puck Movement & Collisions
  *
  * Handles all physics simulation for the Horde Defense game:
- * - Puck movement (pucks move freely, not on rails)
- * - Rail collision (pucks bounce off rail segments)
+ * - Puck movement (pucks move freely through the arena)
  * - Paddle collision (pucks deflect off paddles)
+ * - Outer boundary collision (pucks bounce off arena edge)
  * - Goal detection (center goal and enemy goals)
+ *
+ * Note: Pucks pass freely through rails - rails are only for paddle movement.
  */
 
 import Foundation
@@ -38,12 +40,10 @@ enum HordeDefensePhysics {
             // Move pucks
             updatePucks(state: state, config: config, deltaTime: subDelta)
 
-            // Check collisions with rails
-            for i in state.pucks.indices {
-                if state.pucks[i].isActive {
-                    checkRailCollision(puck: &state.pucks[i], config: config)
-                }
-            }
+            // Note: Pucks pass freely through rails - they only collide with:
+            // - Paddles (player and AI)
+            // - Outer arena boundary
+            // - Goals (center goal and enemy goals)
 
             // Check collisions with paddles
             for i in state.pucks.indices {

@@ -2,17 +2,26 @@
  * HordeDefense Controller View - Phone Input
  *
  * Provides touch controls for moving paddles along the rail system:
- * - Horizontal slider for moving along current rail (clockwise/counterclockwise)
- * - Up/Down buttons at junctions for switching rings
+ * - Swipe left/right: Move paddle along current rail (clockwise/counterclockwise)
+ * - Swipe up/down: Switch rings at junctions (inward/outward)
  * - Mini arena view showing paddle position
  */
 
 import SwiftUI
 
+// MARK: - Swipe Direction
+
+enum SwipeDirection {
+    case left, right, up, down
+}
+
 // MARK: - Controller Area (Embedded in main view)
 
 struct HordeDefenseControllerArea: View {
     let coordinator: HordeDefenseGameCoordinator
+
+    @State private var dragOffset: CGSize = .zero
+    @State private var isDragging = false
 
     var body: some View {
         let playerId = "player_0" // First player
@@ -20,34 +29,17 @@ struct HordeDefenseControllerArea: View {
         VStack(spacing: 16) {
             // Mini arena preview
             HordeDefenseMiniArena(state: coordinator.state, playerId: playerId)
-                .frame(height: 80)
+                .frame(height: 100)
 
-            // Control slider and ring switch buttons
-            HStack(spacing: 20) {
-                // Inward button
-                RingSwitchButton(
-                    direction: .inward,
-                    isEnabled: canSwitchRing(playerId: playerId, goInward: true),
-                    action: {
-                        coordinator.handlePlayerSwitchRing(playerId: playerId, goInward: true)
-                    }
-                )
-
-                // Movement slider
-                RailSlider(
-                    coordinator: coordinator,
-                    playerId: playerId
-                )
-
-                // Outward button
-                RingSwitchButton(
-                    direction: .outward,
-                    isEnabled: canSwitchRing(playerId: playerId, goInward: false),
-                    action: {
-                        coordinator.handlePlayerSwitchRing(playerId: playerId, goInward: false)
-                    }
-                )
-            }
+            // Single swipe control area
+            SwipeControlArea(
+                onSwipe: { direction, magnitude in
+                    handleSwipe(playerId: playerId, direction: direction, magnitude: magnitude)
+                },
+                dragOffset: $dragOffset,
+                isDragging: $isDragging
+            )
+            .frame(height: 80)
         }
         .padding()
         .background(
@@ -60,15 +52,117 @@ struct HordeDefenseControllerArea: View {
         )
     }
 
-    private func canSwitchRing(playerId: String, goInward: Bool) -> Bool {
-        guard let paddle = coordinator.state.getPlayerPaddle(for: playerId) else { return false }
-        guard paddle.position.isAtJunction(config: coordinator.state.config) else { return false }
-
-        if goInward {
-            return paddle.position.ringIndex > 0
-        } else {
-            return paddle.position.ringIndex < coordinator.state.config.ringRadii.count - 1
+    private func handleSwipe(playerId: String, direction: SwipeDirection, magnitude: CGFloat) {
+        switch direction {
+        case .left:
+            coordinator.handlePlayerMove(playerId: playerId, direction: .counterClockwise, distance: magnitude * 5)
+        case .right:
+            coordinator.handlePlayerMove(playerId: playerId, direction: .clockwise, distance: magnitude * 5)
+        case .up:
+            coordinator.handlePlayerSwitchRing(playerId: playerId, goInward: true)
+        case .down:
+            coordinator.handlePlayerSwitchRing(playerId: playerId, goInward: false)
         }
+    }
+}
+
+// MARK: - Swipe Control Area
+
+struct SwipeControlArea: View {
+    let onSwipe: (SwipeDirection, CGFloat) -> Void
+    @Binding var dragOffset: CGSize
+    @Binding var isDragging: Bool
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                // Background
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color.white.opacity(0.05))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(Color.cyan.opacity(0.3), lineWidth: 1)
+                    )
+
+                // Direction indicators
+                VStack {
+                    Image(systemName: "chevron.up")
+                        .foregroundStyle(.cyan.opacity(isDragging && dragOffset.height < -20 ? 1.0 : 0.3))
+                    Spacer()
+                    Image(systemName: "chevron.down")
+                        .foregroundStyle(.pink.opacity(isDragging && dragOffset.height > 20 ? 1.0 : 0.3))
+                }
+                .padding(.vertical, 8)
+
+                HStack {
+                    Image(systemName: "chevron.left")
+                        .foregroundStyle(.cyan.opacity(isDragging && dragOffset.width < -20 ? 1.0 : 0.3))
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .foregroundStyle(.cyan.opacity(isDragging && dragOffset.width > 20 ? 1.0 : 0.3))
+                }
+                .padding(.horizontal, 16)
+
+                // Center indicator (shows drag position)
+                Circle()
+                    .fill(Color.cyan)
+                    .frame(width: 20, height: 20)
+                    .shadow(color: .cyan, radius: isDragging ? 8 : 4)
+                    .offset(x: clampedOffset.width, y: clampedOffset.height)
+
+                // Instruction text
+                if !isDragging {
+                    Text("SWIPE TO MOVE")
+                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .foregroundStyle(.gray)
+                }
+            }
+            .gesture(
+                DragGesture()
+                    .onChanged { value in
+                        isDragging = true
+                        dragOffset = value.translation
+
+                        // Continuous movement while dragging left/right
+                        let horizontalThreshold: CGFloat = 10
+                        if abs(value.translation.width) > horizontalThreshold {
+                            let direction: SwipeDirection = value.translation.width > 0 ? .right : .left
+                            let magnitude = min(abs(value.translation.width) / 100, 1.0)
+                            onSwipe(direction, magnitude)
+                        }
+                    }
+                    .onEnded { value in
+                        isDragging = false
+
+                        // Determine primary swipe direction
+                        let horizontal = abs(value.translation.width)
+                        let vertical = abs(value.translation.height)
+                        let threshold: CGFloat = 30
+
+                        // Vertical swipes for ring switching (only on release)
+                        if vertical > horizontal && vertical > threshold {
+                            if value.translation.height < 0 {
+                                onSwipe(.up, 1.0)
+                            } else {
+                                onSwipe(.down, 1.0)
+                            }
+                        }
+
+                        // Reset offset
+                        withAnimation(.spring(response: 0.3)) {
+                            dragOffset = .zero
+                        }
+                    }
+            )
+        }
+    }
+
+    private var clampedOffset: CGSize {
+        let maxOffset: CGFloat = 30
+        return CGSize(
+            width: max(-maxOffset, min(maxOffset, dragOffset.width)),
+            height: max(-maxOffset, min(maxOffset, dragOffset.height))
+        )
     }
 }
 
@@ -168,110 +262,14 @@ private struct HordeDefenseMiniArena: View {
     }
 }
 
-// MARK: - Rail Slider
-
-private struct RailSlider: View {
-    let coordinator: HordeDefenseGameCoordinator
-    let playerId: String
-
-    @State private var dragOffset: CGFloat = 0
-    @State private var isDragging = false
-
-    private let sliderWidth: CGFloat = 200
-    private let moveSpeed: CGFloat = 4.0
-
-    var body: some View {
-        ZStack {
-            // Track
-            Capsule()
-                .fill(Color(white: 0.15))
-                .frame(width: sliderWidth, height: 40)
-                .overlay(
-                    Capsule()
-                        .stroke(Color.cyan.opacity(0.5), lineWidth: 2)
-                )
-
-            // Direction indicators
-            HStack {
-                Image(systemName: "chevron.left")
-                    .foregroundStyle(.cyan.opacity(isDragging && dragOffset < 0 ? 1 : 0.3))
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .foregroundStyle(.cyan.opacity(isDragging && dragOffset > 0 ? 1 : 0.3))
-            }
-            .font(.system(size: 16, weight: .bold))
-            .padding(.horizontal, 12)
-            .frame(width: sliderWidth)
-
-            // Knob
-            Circle()
-                .fill(Color.cyan)
-                .frame(width: 30, height: 30)
-                .shadow(color: .cyan.opacity(0.5), radius: 8)
-                .offset(x: clampedOffset)
-                .gesture(
-                    DragGesture()
-                        .onChanged { value in
-                            isDragging = true
-                            dragOffset = value.translation.width
-
-                            // Move paddle based on drag direction
-                            let direction: RailDirection = dragOffset > 0 ? .clockwise : .counterClockwise
-                            let distance = abs(dragOffset) / 50 * moveSpeed
-                            coordinator.handlePlayerMove(playerId: playerId, direction: direction, distance: distance)
-                        }
-                        .onEnded { _ in
-                            isDragging = false
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
-                                dragOffset = 0
-                            }
-                        }
-                )
-        }
-    }
-
-    private var clampedOffset: CGFloat {
-        let maxOffset = sliderWidth / 2 - 20
-        return max(-maxOffset, min(maxOffset, dragOffset * 0.3))
-    }
-}
-
-// MARK: - Ring Switch Button
-
-private struct RingSwitchButton: View {
-    let direction: RailDirection
-    let isEnabled: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 4) {
-                Image(systemName: direction == .inward ? "arrow.up" : "arrow.down")
-                    .font(.system(size: 20, weight: .bold))
-
-                Text(direction == .inward ? "IN" : "OUT")
-                    .font(.system(size: 10, weight: .bold, design: .monospaced))
-            }
-            .foregroundStyle(isEnabled ? .cyan : .gray.opacity(0.3))
-            .frame(width: 50, height: 50)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(white: 0.15))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(isEnabled ? Color.cyan.opacity(0.5) : Color.gray.opacity(0.2), lineWidth: 2)
-                    )
-            )
-        }
-        .disabled(!isEnabled)
-    }
-}
-
 // MARK: - Standalone Controller View (for multiplayer)
 
 struct HordeDefenseControllerView: View {
     @Environment(GameCoordinator.self) var mainCoordinator
     let playerId: String
+
+    @State private var dragOffset: CGSize = .zero
+    @State private var isDragging = false
 
     var body: some View {
         if let coordinator = mainCoordinator.hordeDefenseCoordinator {
@@ -318,31 +316,18 @@ struct HordeDefenseControllerView: View {
                                 .foregroundStyle(.gray)
                         }
 
-                        // Control slider and ring switch buttons
-                        HStack(spacing: 20) {
-                            RingSwitchButton(
-                                direction: .inward,
-                                isEnabled: canSwitchRing(goInward: true, coordinator: coordinator),
-                                action: {
-                                    coordinator.handlePlayerSwitchRing(playerId: playerId, goInward: true)
-                                }
-                            )
+                        // Single swipe control area
+                        SwipeControlArea(
+                            onSwipe: { direction, magnitude in
+                                handleSwipe(coordinator: coordinator, direction: direction, magnitude: magnitude)
+                            },
+                            dragOffset: $dragOffset,
+                            isDragging: $isDragging
+                        )
+                        .frame(height: 100)
+                        .padding(.horizontal)
 
-                            RailSlider(
-                                coordinator: coordinator,
-                                playerId: playerId
-                            )
-
-                            RingSwitchButton(
-                                direction: .outward,
-                                isEnabled: canSwitchRing(goInward: false, coordinator: coordinator),
-                                action: {
-                                    coordinator.handlePlayerSwitchRing(playerId: playerId, goInward: false)
-                                }
-                            )
-                        }
-
-                        Text("Drag to move along rail")
+                        Text("Swipe left/right to move, up/down to switch rings")
                             .font(.system(size: 10, design: .monospaced))
                             .foregroundStyle(.gray.opacity(0.5))
                     }
@@ -363,14 +348,16 @@ struct HordeDefenseControllerView: View {
         }
     }
 
-    private func canSwitchRing(goInward: Bool, coordinator: HordeDefenseGameCoordinator) -> Bool {
-        guard let paddle = coordinator.state.getPlayerPaddle(for: playerId) else { return false }
-        guard paddle.position.isAtJunction(config: coordinator.state.config) else { return false }
-
-        if goInward {
-            return paddle.position.ringIndex > 0
-        } else {
-            return paddle.position.ringIndex < coordinator.state.config.ringRadii.count - 1
+    private func handleSwipe(coordinator: HordeDefenseGameCoordinator, direction: SwipeDirection, magnitude: CGFloat) {
+        switch direction {
+        case .left:
+            coordinator.handlePlayerMove(playerId: playerId, direction: .counterClockwise, distance: magnitude * 5)
+        case .right:
+            coordinator.handlePlayerMove(playerId: playerId, direction: .clockwise, distance: magnitude * 5)
+        case .up:
+            coordinator.handlePlayerSwitchRing(playerId: playerId, goInward: true)
+        case .down:
+            coordinator.handlePlayerSwitchRing(playerId: playerId, goInward: false)
         }
     }
 }
