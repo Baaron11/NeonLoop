@@ -70,7 +70,9 @@ final class BilliardDodgeGameCoordinator {
         state.phase = .countdown(remaining: state.countdownValue)
 
         // Use a high-frequency timer for smooth countdown display
-        countdownTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] timer in
+        // Use .common mode so timer fires even during UI animations (like sheet dismissal)
+        // This fixes the bug where games wouldn't start when launched directly from the launcher
+        let timer = Timer(timeInterval: 0.05, repeats: true) { [weak self] timer in
             guard let self = self else {
                 timer.invalidate()
                 return
@@ -86,6 +88,8 @@ final class BilliardDodgeGameCoordinator {
                 self.executeRound()
             }
         }
+        RunLoop.main.add(timer, forMode: .common)
+        countdownTimer = timer
     }
 
     private func executeRound() {
@@ -194,15 +198,20 @@ final class BilliardDodgeGameCoordinator {
         // Continue to next round
         state.currentRound += 1
 
-        // Reset pocketed balls that aren't eliminated (only cue ball)
-        state.cueBall.isPocketed = false
-        state.cueBall.position = CGPoint(x: state.config.tableWidth * 0.25, y: state.config.tableHeight / 2)
+        // Only reset cue ball position if it was pocketed (scratched)
+        // Otherwise, keep it where physics left it
+        if state.cueBall.isPocketed {
+            state.cueBall.position = CGPoint(x: state.config.tableWidth * 0.25, y: state.config.tableHeight / 2)
+            state.cueBall.isPocketed = false
+        }
         state.cueBall.velocity = .zero
 
-        // Reset player balls velocities
+        // Reset player ball velocities but keep their positions
+        // Only clear isPocketed for balls that were pocketed this round but not eliminated
         for i in state.balls.indices {
             state.balls[i].velocity = .zero
-            state.balls[i].isPocketed = false
+            // Don't reset isPocketed here - eliminated players stay pocketed
+            // The isPocketed flag for active players is used to detect elimination
         }
 
         startRound()
