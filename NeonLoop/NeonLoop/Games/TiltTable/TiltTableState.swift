@@ -270,35 +270,3 @@ final class TiltTableState {
         }
     }
 }
-
-// MARK: - CGVector Extensions
-
-extension CGVector {
-    var magnitude: CGFloat {
-        sqrt(dx * dx + dy * dy)
-    }
-
-    var normalized: CGVector {
-        let mag = magnitude
-        guard mag > 0 else { return .zero }
-        return CGVector(dx: dx / mag, dy: dy / mag)
-    }
-
-    func scaled(by factor: CGFloat) -> CGVector {
-        CGVector(dx: dx * factor, dy: dy * factor)
-    }
-
-    static func + (lhs: CGVector, rhs: CGVector) -> CGVector {
-        CGVector(dx: lhs.dx + rhs.dx, dy: lhs.dy + rhs.dy)
-    }
-}
-
-extension CGPoint {
-    func distance(to other: CGPoint) -> CGFloat {
-        sqrt(pow(x - other.x, 2) + pow(y - other.y, 2))
-    }
-
-    static func + (lhs: CGPoint, rhs: CGVector) -> CGPoint {
-        CGPoint(x: lhs.x + rhs.dx, y: lhs.y + rhs.dy)
-    }
-}
