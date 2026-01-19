@@ -126,7 +126,7 @@ private struct TiltTableGridBackground: View {
 
 // MARK: - Tilt Shadow View
 
-private struct TiltShadowView: View {
+struct TiltShadowView: View {
     let tilt: CGVector
     let config: TiltTableConfig
 
@@ -156,7 +156,7 @@ private struct TiltShadowView: View {
 
 // MARK: - Table Surface View
 
-private struct TableSurfaceView: View {
+struct TableSurfaceView: View {
     let config: TiltTableConfig
 
     var body: some View {
@@ -202,7 +202,7 @@ private struct TableSurfaceView: View {
     }
 }
 
-private struct TableGridPattern: View {
+struct TableGridPattern: View {
     let radius: CGFloat
 
     var body: some View {
@@ -246,7 +246,7 @@ private struct TableGridPattern: View {
 
 // MARK: - Hole View
 
-private struct HoleView: View {
+struct HoleView: View {
     let hole: TiltTableHole
     let config: TiltTableConfig
     let ball: TiltTableBall
@@ -258,6 +258,11 @@ private struct HoleView: View {
         return ball.position.distance(to: holePos) < config.holeCaptureRadius
     }
 
+    // Calculate the angle for positioning the label towards the center
+    private var labelAngle: CGFloat {
+        hole.angle + .pi  // Point label towards table center
+    }
+
     var body: some View {
         let pos = hole.position(config: config)
 
@@ -265,42 +270,53 @@ private struct HoleView: View {
             // Outer glow when ball is nearby
             if isNearby && !hole.isPlugged {
                 Circle()
-                    .fill(hole.holeType.color.opacity(0.3))
+                    .fill(hole.holeType.color.opacity(0.4))
                     .frame(width: config.holeRadius * 3, height: config.holeRadius * 3)
                     .blur(radius: 10)
                     .scaleEffect(pulseAnimation ? 1.3 : 1.0)
             }
 
-            // Hole ring
+            // Hole depth effect (darker inner)
             Circle()
-                .stroke(
-                    hole.isPlugged ? .gray.opacity(0.3) : hole.holeType.color,
-                    lineWidth: hole.isPlugged ? 1 : 2
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            Color.black.opacity(0.8),
+                            hole.isPlugged ? Color.gray.opacity(0.2) : hole.holeType.color.opacity(0.3)
+                        ],
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: config.holeRadius
+                    )
                 )
                 .frame(width: config.holeRadius * 2, height: config.holeRadius * 2)
 
-            // Hole fill
+            // Hole ring (border)
             Circle()
-                .fill(
-                    hole.isPlugged
-                        ? Color.gray.opacity(0.1)
-                        : hole.holeType.color.opacity(0.2)
+                .stroke(
+                    hole.isPlugged ? .gray.opacity(0.4) : hole.holeType.color,
+                    lineWidth: hole.isPlugged ? 1 : 3
                 )
                 .frame(width: config.holeRadius * 2, height: config.holeRadius * 2)
+                .shadow(color: hole.isPlugged ? .clear : hole.holeType.color.opacity(0.5), radius: 4)
 
             // X mark for plugged holes
             if hole.isPlugged {
                 Image(systemName: "xmark")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.gray.opacity(0.5))
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(.gray.opacity(0.6))
             }
 
-            // Label
+            // Label (positioned towards table center, inside the table)
             Text(hole.label)
-                .font(.system(size: 8, weight: .semibold, design: .monospaced))
-                .foregroundStyle(hole.isPlugged ? .gray.opacity(0.4) : .white)
+                .font(.system(size: 7, weight: .bold, design: .monospaced))
+                .foregroundStyle(hole.isPlugged ? .gray.opacity(0.4) : .white.opacity(0.9))
                 .lineLimit(1)
-                .offset(y: config.holeRadius + 12)
+                .minimumScaleFactor(0.6)
+                .offset(
+                    x: cos(labelAngle) * (config.holeRadius + 16),
+                    y: sin(labelAngle) * (config.holeRadius + 16)
+                )
         }
         .position(x: pos.x, y: pos.y)
         .offset(x: config.tableRadius, y: config.tableRadius)  // Center in parent
@@ -314,7 +330,7 @@ private struct HoleView: View {
 
 // MARK: - Player Avatar View
 
-private struct PlayerAvatarView: View {
+struct PlayerAvatarView: View {
     let player: TiltTablePlayer
     let config: TiltTableConfig
 
@@ -351,46 +367,78 @@ private struct PlayerAvatarView: View {
 
 // MARK: - Ball View
 
-private struct BallView: View {
+struct BallView: View {
     let ball: TiltTableBall
     let config: TiltTableConfig
 
     var body: some View {
         ZStack {
-            // Shadow
-            Ellipse()
-                .fill(.black.opacity(0.3))
-                .frame(width: config.ballRadius * 2.2, height: config.ballRadius * 1.5)
-                .offset(x: 2, y: 4)
-
-            // Ball glow
-            Circle()
-                .fill(.white.opacity(0.2))
-                .frame(width: config.ballRadius * 3, height: config.ballRadius * 3)
-                .blur(radius: 8)
-
-            // Ball body (chrome/metallic look)
+            // Outer glow (cyan tint for neon effect)
             Circle()
                 .fill(
                     RadialGradient(
                         colors: [
-                            .white,
-                            Color(white: 0.8),
-                            Color(white: 0.5),
-                            Color(white: 0.3)
+                            .cyan.opacity(0.4),
+                            .cyan.opacity(0.2),
+                            .clear
                         ],
-                        center: .init(x: 0.3, y: 0.3),
+                        center: .center,
+                        startRadius: config.ballRadius * 0.8,
+                        endRadius: config.ballRadius * 2.5
+                    )
+                )
+                .frame(width: config.ballRadius * 5, height: config.ballRadius * 5)
+                .blur(radius: 6)
+
+            // Shadow underneath the ball
+            Ellipse()
+                .fill(.black.opacity(0.5))
+                .frame(width: config.ballRadius * 2.2, height: config.ballRadius * 1.2)
+                .offset(x: 3, y: 6)
+                .blur(radius: 4)
+
+            // Ball body (chrome/metallic look with better contrast)
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            Color(white: 0.95),      // Bright center
+                            Color(white: 0.85),
+                            Color(white: 0.7),
+                            Color(white: 0.5),       // Darker edge for 3D effect
+                            Color(white: 0.4)
+                        ],
+                        center: .init(x: 0.35, y: 0.3),
                         startRadius: 0,
                         endRadius: config.ballRadius
                     )
                 )
                 .frame(width: config.ballRadius * 2, height: config.ballRadius * 2)
+                .shadow(color: .cyan.opacity(0.6), radius: 8)
 
-            // Highlight
+            // Metallic ring highlight
             Circle()
-                .fill(.white.opacity(0.6))
-                .frame(width: config.ballRadius * 0.6, height: config.ballRadius * 0.6)
-                .offset(x: -config.ballRadius * 0.3, y: -config.ballRadius * 0.3)
+                .stroke(
+                    LinearGradient(
+                        colors: [.white.opacity(0.5), .clear, .white.opacity(0.2)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 2
+                )
+                .frame(width: config.ballRadius * 1.8, height: config.ballRadius * 1.8)
+
+            // Primary specular highlight (bright spot)
+            Circle()
+                .fill(.white.opacity(0.9))
+                .frame(width: config.ballRadius * 0.5, height: config.ballRadius * 0.5)
+                .offset(x: -config.ballRadius * 0.35, y: -config.ballRadius * 0.35)
+
+            // Secondary highlight (smaller)
+            Circle()
+                .fill(.white.opacity(0.4))
+                .frame(width: config.ballRadius * 0.25, height: config.ballRadius * 0.25)
+                .offset(x: config.ballRadius * 0.25, y: config.ballRadius * 0.3)
         }
         .position(x: ball.position.x, y: ball.position.y)
         .offset(x: config.tableRadius, y: config.tableRadius)
@@ -399,7 +447,7 @@ private struct BallView: View {
 
 // MARK: - Countdown Overlay
 
-private struct CountdownOverlay: View {
+struct CountdownOverlay: View {
     let count: Int
     @State private var scale: CGFloat = 2.0
     @State private var opacity: Double = 0
@@ -432,7 +480,7 @@ private struct CountdownOverlay: View {
 
 // MARK: - Ball Falling Overlay
 
-private struct BallFallingOverlay: View {
+struct BallFallingOverlay: View {
     let holeId: String
     let holes: [TiltTableHole]
 
@@ -455,7 +503,7 @@ private struct BallFallingOverlay: View {
 
 // MARK: - Game Complete Overlay
 
-private struct GameCompleteOverlay: View {
+struct GameCompleteOverlay: View {
     let result: TiltTableHole
     let onExit: () -> Void
 

@@ -26,16 +26,16 @@ struct TiltTableConfig {
 
     static let `default` = TiltTableConfig(
         tableRadius: 180,
-        ballRadius: 12,
-        playerAvatarRadius: 20,
-        holeRadius: 22,
-        holeCaptureRadius: 35,
+        ballRadius: 20,              // Increased from 12 for better visibility
+        playerAvatarRadius: 18,      // Slightly smaller player markers
+        holeRadius: 24,              // Slightly larger holes
+        holeCaptureRadius: 38,
         gravity: 0.15,
         friction: 0.985,
         maxTilt: 0.4,
         maxBallSpeed: 8,
         playerMoveSpeed: 3.0,
-        ringRadius: 160
+        ringRadius: 155              // Position holes/players so outer edge meets table border
     )
 }
 
