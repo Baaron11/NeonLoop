@@ -17,6 +17,7 @@ enum AppState: Equatable {
     case lobby              // Multiplayer lobby
     case playing            // Active game (Polygon Hockey)
     case playingTiltTable   // Tilt Table game
+    case playingBilliardDodge   // Billiard Dodge game
     case placeholderGame(GameInfo)  // Placeholder for unimplemented games
 }
 
@@ -29,6 +30,7 @@ extension AppState {
         case (.lobby, .lobby): return true
         case (.playing, .playing): return true
         case (.playingTiltTable, .playingTiltTable): return true
+        case (.playingBilliardDodge, .playingBilliardDodge): return true
         case (.placeholderGame(let lhsGame), .placeholderGame(let rhsGame)):
             return lhsGame.id == rhsGame.id
         default: return false
@@ -48,6 +50,9 @@ final class GameCoordinator {
 
     // Tilt Table game coordinator (initialized when launching Tilt Table)
     var tiltTableCoordinator: TiltTableGameCoordinator?
+
+    // Billiard Dodge game coordinator (initialized when launching Billiard Dodge)
+    var billiardDodgeCoordinator: BilliardDodgeGameCoordinator?
 
     // Game loop
     private var displayLink: CADisplayLink?
@@ -78,8 +83,10 @@ final class GameCoordinator {
         print("🔵 [GameCoordinator] goToLauncher() called")
         print("🔵 [GameCoordinator]   - Current appState: \(appState)")
         print("🔵 [GameCoordinator]   - tiltTableCoordinator before stop: \(tiltTableCoordinator != nil ? "EXISTS" : "NIL")")
+        print("🔵 [GameCoordinator]   - billiardDodgeCoordinator before stop: \(billiardDodgeCoordinator != nil ? "EXISTS" : "NIL")")
         stopGameLoop()
         stopTiltTable()
+        stopBilliardDodge()
         appState = .launcher
         print("🔵 [GameCoordinator]   - New appState: \(appState)")
     }
@@ -149,6 +156,63 @@ final class GameCoordinator {
         tiltTableCoordinator?.startGame()
         print("🟣 [GameCoordinator]   - Coordinator created and started")
         print("🟣 [GameCoordinator]   - Phase: \(String(describing: tiltTableCoordinator?.state.phase))")
+    }
+
+    // MARK: - Billiard Dodge
+
+    func launchBilliardDodge() {
+        print("🟣 [GameCoordinator] launchBilliardDodge() CALLED")
+        print("🟣 [GameCoordinator]   - Current appState: \(appState)")
+        print("🟣 [GameCoordinator]   - billiardDodgeCoordinator before: \(billiardDodgeCoordinator != nil ? "EXISTS" : "NIL")")
+
+        stopGameLoop()
+
+        // Initialize the Billiard Dodge game coordinator and start the game
+        // CRITICAL: Complete all initialization BEFORE changing app state
+        // This follows the working pattern from Polygon Hockey to avoid race conditions
+        print("🟣 [GameCoordinator]   - Creating BilliardDodgeGameCoordinator...")
+        billiardDodgeCoordinator = BilliardDodgeGameCoordinator()
+        print("🟣 [GameCoordinator]   - billiardDodgeCoordinator after create: \(billiardDodgeCoordinator != nil ? "EXISTS" : "NIL")")
+
+        print("🟣 [GameCoordinator]   - Calling setupSinglePlayer()...")
+        billiardDodgeCoordinator?.setupSinglePlayer()
+        print("🟣 [GameCoordinator]   - Players count: \(billiardDodgeCoordinator?.state.balls.count ?? -1)")
+
+        print("🟣 [GameCoordinator]   - Calling startGame()...")
+        billiardDodgeCoordinator?.startGame()
+        print("🟣 [GameCoordinator]   - Phase after startGame: \(String(describing: billiardDodgeCoordinator?.state.phase))")
+        print("🟣 [GameCoordinator]   - isRunning: \(billiardDodgeCoordinator?.isRunning ?? false)")
+
+        print("🟣 [GameCoordinator]   - Setting appState to .playingBilliardDodge")
+        appState = .playingBilliardDodge
+        print("🟣 [GameCoordinator] launchBilliardDodge() COMPLETE")
+    }
+
+    func stopBilliardDodge() {
+        print("🔴 [GameCoordinator] stopBilliardDodge() called")
+        print("🔴 [GameCoordinator]   - billiardDodgeCoordinator: \(billiardDodgeCoordinator != nil ? "EXISTS" : "NIL")")
+        billiardDodgeCoordinator?.stopGame()
+        billiardDodgeCoordinator = nil
+        print("🔴 [GameCoordinator]   - billiardDodgeCoordinator after nil: \(billiardDodgeCoordinator != nil ? "EXISTS" : "NIL")")
+    }
+
+    /// Initialize Billiard Dodge coordinator without changing app state.
+    /// Called as a fallback when the view appears before the coordinator is ready.
+    func initializeBilliardDodgeIfNeeded() {
+        print("🟣 [GameCoordinator] initializeBilliardDodgeIfNeeded() called")
+        print("🟣 [GameCoordinator]   - billiardDodgeCoordinator: \(billiardDodgeCoordinator != nil ? "EXISTS" : "NIL")")
+
+        guard billiardDodgeCoordinator == nil else {
+            print("🟣 [GameCoordinator]   - Coordinator already exists, skipping")
+            return
+        }
+
+        print("🟣 [GameCoordinator]   - Creating BilliardDodgeGameCoordinator...")
+        billiardDodgeCoordinator = BilliardDodgeGameCoordinator()
+        billiardDodgeCoordinator?.setupSinglePlayer()
+        billiardDodgeCoordinator?.startGame()
+        print("🟣 [GameCoordinator]   - Coordinator created and started")
+        print("🟣 [GameCoordinator]   - Phase: \(String(describing: billiardDodgeCoordinator?.state.phase))")
     }
 
     func startSinglePlayerGame(difficulty: Difficulty, mode: GameMode = .oneVsOne) {

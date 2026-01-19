@@ -92,6 +92,8 @@ struct GameLauncherView: View {
             coordinator.startSinglePlayerGame(difficulty: difficulty)
         case "tilt_table":
             coordinator.launchTiltTable()
+        case "billiard_dodge":
+            coordinator.launchBilliardDodge()
         default:
             // Future: Launch specific games with their own coordinators
             coordinator.startSinglePlayerGame(difficulty: difficulty)
