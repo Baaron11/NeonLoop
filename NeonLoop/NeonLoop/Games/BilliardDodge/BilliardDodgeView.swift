@@ -249,14 +249,14 @@ struct BilliardTableSurface: View {
                 )
 
             // Subtle grid pattern on table
-            TableGridPattern(config: config)
+            BilliardTableGrid(config: config)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
                 .padding(8)
         }
     }
 }
 
-struct TableGridPattern: View {
+struct BilliardTableGrid: View {
     let config: BilliardDodgeConfig
 
     var body: some View {
