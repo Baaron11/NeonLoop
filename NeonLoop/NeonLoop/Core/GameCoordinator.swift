@@ -46,6 +46,9 @@ final class GameCoordinator {
     var matchState: MatchState
     var aiOpponent: AIOpponent?
 
+    // Tilt Table game coordinator (initialized when launching Tilt Table)
+    var tiltTableCoordinator: TiltTableGameCoordinator?
+
     // Game loop
     private var displayLink: CADisplayLink?
     private var lastUpdateTime: CFTimeInterval = 0
@@ -70,6 +73,7 @@ final class GameCoordinator {
 
     func goToLauncher() {
         stopGameLoop()
+        stopTiltTable()
         appState = .launcher
     }
 
@@ -88,7 +92,19 @@ final class GameCoordinator {
 
     func launchTiltTable() {
         stopGameLoop()
+
+        // Initialize the Tilt Table game coordinator and start the game
+        // This ensures the game is ready before the view appears
+        tiltTableCoordinator = TiltTableGameCoordinator()
+        tiltTableCoordinator?.setupSinglePlayer()
+        tiltTableCoordinator?.startGame()
+
         appState = .playingTiltTable
+    }
+
+    func stopTiltTable() {
+        tiltTableCoordinator?.stopGame()
+        tiltTableCoordinator = nil
     }
 
     func startSinglePlayerGame(difficulty: Difficulty, mode: GameMode = .oneVsOne) {
