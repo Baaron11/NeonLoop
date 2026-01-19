@@ -243,7 +243,7 @@ struct HordeDefenseArenaView: View {
                 // Pucks
                 ForEach(state.pucks) { puck in
                     if puck.isActive {
-                        PuckView(
+                        HordePuckView(
                             puck: puck,
                             config: state.config,
                             scale: scale
@@ -253,7 +253,7 @@ struct HordeDefenseArenaView: View {
 
                 // Player paddles
                 ForEach(state.playerPaddles) { paddle in
-                    PaddleView(
+                    HordePaddleView(
                         paddle: paddle,
                         config: state.config,
                         scale: scale
@@ -262,7 +262,7 @@ struct HordeDefenseArenaView: View {
 
                 // AI paddles
                 ForEach(state.aiPaddles) { paddle in
-                    PaddleView(
+                    HordePaddleView(
                         paddle: paddle,
                         config: state.config,
                         scale: scale
@@ -364,7 +364,6 @@ private struct CenterGoalView: View {
 
     var body: some View {
         let scaledRadius = radius * scale
-        let center = scaledRadius / radius * radius * scale // Same as config.arenaRadius * scale
 
         ZStack {
             // Glow effect
@@ -406,7 +405,7 @@ private struct CenterGoalView: View {
 
 // MARK: - Puck View
 
-private struct PuckView: View {
+private struct HordePuckView: View {
     let puck: HordePuck
     let config: HordeDefenseConfig
     let scale: CGFloat
@@ -458,7 +457,7 @@ private struct PuckView: View {
 
 // MARK: - Paddle View
 
-private struct PaddleView: View {
+private struct HordePaddleView: View {
     let paddle: HordePaddle
     let config: HordeDefenseConfig
     let scale: CGFloat
@@ -501,7 +500,6 @@ private struct JunctionPointsView: View {
     let scale: CGFloat
 
     var body: some View {
-        let center = config.arenaRadius * scale
         let railSystem = RailSystem(config: config)
 
         ForEach(railSystem.junctionPoints()) { junction in
