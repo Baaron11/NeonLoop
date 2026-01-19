@@ -19,6 +19,7 @@ enum AppState: Equatable {
     case playingTiltTable   // Tilt Table game
     case playingBilliardDodge   // Billiard Dodge game
     case playingHordeDefense    // Horde Defense game
+    case playingFoosball        // Foosball game
     case placeholderGame(GameInfo)  // Placeholder for unimplemented games
 }
 
@@ -33,6 +34,7 @@ extension AppState {
         case (.playingTiltTable, .playingTiltTable): return true
         case (.playingBilliardDodge, .playingBilliardDodge): return true
         case (.playingHordeDefense, .playingHordeDefense): return true
+        case (.playingFoosball, .playingFoosball): return true
         case (.placeholderGame(let lhsGame), .placeholderGame(let rhsGame)):
             return lhsGame.id == rhsGame.id
         default: return false
@@ -58,6 +60,9 @@ final class GameCoordinator {
 
     // Horde Defense game coordinator (initialized when launching Horde Defense)
     var hordeDefenseCoordinator: HordeDefenseGameCoordinator?
+
+    // Foosball game coordinator (initialized when launching Foosball)
+    var foosballCoordinator: FoosballGameCoordinator?
 
     // Game loop
     private var displayLink: CADisplayLink?
@@ -90,10 +95,12 @@ final class GameCoordinator {
         print("🔵 [GameCoordinator]   - tiltTableCoordinator before stop: \(tiltTableCoordinator != nil ? "EXISTS" : "NIL")")
         print("🔵 [GameCoordinator]   - billiardDodgeCoordinator before stop: \(billiardDodgeCoordinator != nil ? "EXISTS" : "NIL")")
         print("🔵 [GameCoordinator]   - hordeDefenseCoordinator before stop: \(hordeDefenseCoordinator != nil ? "EXISTS" : "NIL")")
+        print("🔵 [GameCoordinator]   - foosballCoordinator before stop: \(foosballCoordinator != nil ? "EXISTS" : "NIL")")
         stopGameLoop()
         stopTiltTable()
         stopBilliardDodge()
         stopHordeDefense()
+        stopFoosball()
         appState = .launcher
         print("🔵 [GameCoordinator]   - New appState: \(appState)")
     }
@@ -274,6 +281,60 @@ final class GameCoordinator {
         hordeDefenseCoordinator?.setupSinglePlayer()
         print("🟣 [GameCoordinator]   - Coordinator created")
         print("🟣 [GameCoordinator]   - Phase: \(String(describing: hordeDefenseCoordinator?.state.phase))")
+    }
+
+    // MARK: - Foosball
+
+    func launchFoosball() {
+        print("⚽ [GameCoordinator] launchFoosball() CALLED")
+        print("⚽ [GameCoordinator]   - Current appState: \(appState)")
+        print("⚽ [GameCoordinator]   - foosballCoordinator before: \(foosballCoordinator != nil ? "EXISTS" : "NIL")")
+
+        stopGameLoop()
+
+        // Initialize the Foosball game coordinator
+        // CRITICAL: Complete all initialization BEFORE changing app state
+        // This follows the working pattern from Polygon Hockey to avoid race conditions
+        print("⚽ [GameCoordinator]   - Creating FoosballGameCoordinator...")
+        foosballCoordinator = FoosballGameCoordinator()
+        print("⚽ [GameCoordinator]   - foosballCoordinator after create: \(foosballCoordinator != nil ? "EXISTS" : "NIL")")
+
+        print("⚽ [GameCoordinator]   - Calling setupSinglePlayer()...")
+        foosballCoordinator?.setupSinglePlayer()
+
+        // Note: We don't start the game immediately - the settings view will show first
+        // The game starts when the player presses "Start Game" in settings
+        print("⚽ [GameCoordinator]   - Phase: \(String(describing: foosballCoordinator?.state.phase))")
+
+        print("⚽ [GameCoordinator]   - Setting appState to .playingFoosball")
+        appState = .playingFoosball
+        print("⚽ [GameCoordinator] launchFoosball() COMPLETE")
+    }
+
+    func stopFoosball() {
+        print("🔴 [GameCoordinator] stopFoosball() called")
+        print("🔴 [GameCoordinator]   - foosballCoordinator: \(foosballCoordinator != nil ? "EXISTS" : "NIL")")
+        foosballCoordinator?.stopGame()
+        foosballCoordinator = nil
+        print("🔴 [GameCoordinator]   - foosballCoordinator after nil: \(foosballCoordinator != nil ? "EXISTS" : "NIL")")
+    }
+
+    /// Initialize Foosball coordinator without changing app state.
+    /// Called as a fallback when the view appears before the coordinator is ready.
+    func initializeFoosballIfNeeded() {
+        print("🟣 [GameCoordinator] initializeFoosballIfNeeded() called")
+        print("🟣 [GameCoordinator]   - foosballCoordinator: \(foosballCoordinator != nil ? "EXISTS" : "NIL")")
+
+        guard foosballCoordinator == nil else {
+            print("🟣 [GameCoordinator]   - Coordinator already exists, skipping")
+            return
+        }
+
+        print("🟣 [GameCoordinator]   - Creating FoosballGameCoordinator...")
+        foosballCoordinator = FoosballGameCoordinator()
+        foosballCoordinator?.setupSinglePlayer()
+        print("🟣 [GameCoordinator]   - Coordinator created")
+        print("🟣 [GameCoordinator]   - Phase: \(String(describing: foosballCoordinator?.state.phase))")
     }
 
     func startSinglePlayerGame(difficulty: Difficulty, mode: GameMode = .oneVsOne) {
