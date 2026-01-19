@@ -28,15 +28,15 @@ struct HordeDefenseConfig {
     let puckCount: Int                // Pucks in play
 
     static let `default` = HordeDefenseConfig(
-        arenaRadius: 200,
-        centerGoalRadius: 25,
-        ringRadii: [60, 120, 180],
+        arenaRadius: 180,
+        centerGoalRadius: 28,
+        ringRadii: [80, 140],
         spokeCount: 8,
         enemyGoalCount: 6,
         enemyGoalArcWidth: .pi / 12, // 15 degrees
         paddleLength: 30,
         paddleThickness: 8,
-        puckRadius: 10,
+        puckRadius: 8,
         puckSpeed: 4.0,
         targetScore: 5,
         defenderCount: 1,
@@ -421,12 +421,13 @@ final class HordeDefenseState {
     private func setupPlayerPaddles() {
         playerPaddles = []
         let count = config.defenderCount
-        let middleRingIndex = config.ringRadii.count / 2
+        // With 2 rings, put players on inner ring (index 0) to defend center goal
+        let playerRingIndex = 0
         let angleStep = (2 * .pi) / CGFloat(max(count, 1))
 
         for i in 0..<count {
             let angle = CGFloat(i) * angleStep
-            let position = RailPosition.onRing(middleRingIndex, angle: angle)
+            let position = RailPosition.onRing(playerRingIndex, angle: angle)
             let paddle = HordePaddle.playerPaddle(
                 id: "player_\(i)",
                 position: position,

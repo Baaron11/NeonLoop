@@ -189,41 +189,71 @@ enum HordeDefensePhysics {
         let paddlePos = paddle.position.toPoint(config: config)
         let puckPos = puck.position
 
-        // Calculate distance to paddle center
+        // Calculate paddle orientation (tangent to ring)
+        let centerX = config.arenaRadius
+        let centerY = config.arenaRadius
+        let angleToCenter = atan2(paddlePos.y - centerY, paddlePos.x - centerX)
+        let tangentAngle = angleToCenter + .pi / 2
+
+        // Transform puck position to paddle's local coordinate system
         let dx = puckPos.x - paddlePos.x
         let dy = puckPos.y - paddlePos.y
-        let dist = sqrt(dx * dx + dy * dy)
 
-        // Paddle is a line segment along the rail
-        // For simplicity, we treat it as a circle with radius = paddleLength / 2
-        let paddleRadius = config.paddleLength / 2
-        let collisionDist = config.puckRadius + paddleRadius
+        // Rotate to paddle's local space (inverse rotation)
+        let cosAngle = cos(-tangentAngle)
+        let sinAngle = sin(-tangentAngle)
+        let localX = dx * cosAngle - dy * sinAngle
+        let localY = dx * sinAngle + dy * cosAngle
 
-        if dist < collisionDist && dist > 0 {
-            // Calculate normal (from paddle to puck)
-            let normal = CGVector(dx: dx / dist, dy: dy / dist)
+        // Check collision with paddle rectangle in local space
+        let halfLength = config.paddleLength / 2
+        let halfThickness = config.paddleThickness / 2 + config.puckRadius
+
+        if abs(localX) <= halfLength && abs(localY) <= halfThickness {
+            // Collision detected - calculate which side was hit
+            let overlapX = halfLength - abs(localX)
+            let overlapY = halfThickness - abs(localY)
+
+            // Determine collision normal in local space
+            var localNormalX: CGFloat = 0
+            var localNormalY: CGFloat = 0
+
+            if overlapY < overlapX {
+                // Hit top or bottom face
+                localNormalY = localY > 0 ? 1 : -1
+            } else {
+                // Hit left or right face
+                localNormalX = localX > 0 ? 1 : -1
+            }
+
+            // Transform normal back to world space
+            let worldNormalX = localNormalX * cos(tangentAngle) - localNormalY * sin(tangentAngle)
+            let worldNormalY = localNormalX * sin(tangentAngle) + localNormalY * cos(tangentAngle)
 
             // Check if puck is moving toward paddle
-            let dotProduct = puck.velocity.dx * normal.dx + puck.velocity.dy * normal.dy
+            let dotProduct = puck.velocity.dx * worldNormalX + puck.velocity.dy * worldNormalY
 
             if dotProduct < 0 {
                 // Reflect velocity
-                puck.velocity.dx -= 2 * dotProduct * normal.dx
-                puck.velocity.dy -= 2 * dotProduct * normal.dy
+                puck.velocity.dx -= 2 * dotProduct * worldNormalX
+                puck.velocity.dy -= 2 * dotProduct * worldNormalY
 
                 // Apply paddle bounce (slight speed boost)
                 puck.velocity = puck.velocity.scaled(by: paddleBounce)
 
-                // Add some deflection based on where puck hit paddle
-                let deflectionAngle = atan2(dy, dx)
-                let deflectionStrength: CGFloat = 0.5
-                puck.velocity.dx += cos(deflectionAngle) * deflectionStrength
-                puck.velocity.dy += sin(deflectionAngle) * deflectionStrength
+                // Add deflection based on where puck hit along paddle length
+                let hitOffset = localX / halfLength  // -1 to 1
+                let deflectionStrength: CGFloat = 0.3
+                // Add perpendicular deflection in world space
+                let perpX = -sin(tangentAngle) * hitOffset * deflectionStrength
+                let perpY = cos(tangentAngle) * hitOffset * deflectionStrength
+                puck.velocity.dx += perpX
+                puck.velocity.dy += perpY
 
-                // Separate puck from paddle
-                let separation = collisionDist - dist + 1
-                puck.position.x += normal.dx * separation
-                puck.position.y += normal.dy * separation
+                // Push puck outside paddle to prevent multiple collisions
+                let pushDistance = (overlapY < overlapX ? overlapY : overlapX) + 1
+                puck.position.x += worldNormalX * pushDistance
+                puck.position.y += worldNormalY * pushDistance
 
                 // Record who hit the puck
                 puck.lastHitBy = paddle.id

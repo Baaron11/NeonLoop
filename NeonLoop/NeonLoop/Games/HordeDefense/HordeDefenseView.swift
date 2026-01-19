@@ -469,27 +469,35 @@ private struct HordePaddleView: View {
         let length = config.paddleLength * scale
         let thickness = config.paddleThickness * scale
 
+        // Calculate center of arena
+        let centerX = config.arenaRadius * scale
+        let centerY = config.arenaRadius * scale
+
+        // Calculate angle from center to paddle position
+        // This makes the paddle tangent to the ring (perpendicular to radius)
+        let angleToCenter = atan2(y - centerY, x - centerX)
+        let tangentAngle = angleToCenter + .pi / 2  // Perpendicular to radius
+
         ZStack {
             // Paddle glow
             Capsule()
                 .fill(paddle.color.opacity(0.3))
                 .frame(width: length * 1.3, height: thickness * 2)
                 .blur(radius: 4)
-                .position(x: x, y: y)
 
             // Paddle body
             Capsule()
                 .fill(paddle.color)
                 .frame(width: length, height: thickness)
                 .shadow(color: paddle.color, radius: 6)
-                .position(x: x, y: y)
 
             // Label
             Text(paddle.displayLabel)
                 .font(.system(size: 8 * scale, weight: .bold, design: .monospaced))
                 .foregroundStyle(.white)
-                .position(x: x, y: y)
         }
+        .rotationEffect(.radians(tangentAngle))
+        .position(x: x, y: y)
     }
 }
 
