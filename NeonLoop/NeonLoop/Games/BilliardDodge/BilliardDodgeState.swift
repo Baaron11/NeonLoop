@@ -407,21 +407,3 @@ final class BilliardDodgeState {
         balls.first { $0.playerId == playerId }
     }
 }
-
-// MARK: - CGVector Extension (if not already defined)
-
-extension CGVector {
-    var magnitude: CGFloat {
-        sqrt(dx * dx + dy * dy)
-    }
-
-    var normalized: CGVector {
-        let mag = magnitude
-        guard mag > 0 else { return .zero }
-        return CGVector(dx: dx / mag, dy: dy / mag)
-    }
-
-    func scaled(by factor: CGFloat) -> CGVector {
-        CGVector(dx: dx * factor, dy: dy * factor)
-    }
-}
