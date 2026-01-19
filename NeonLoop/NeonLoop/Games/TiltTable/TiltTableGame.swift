@@ -79,7 +79,9 @@ final class TiltTableGameCoordinator {
         state.phase = .countdown(3)
         print("🎱 [TiltTableGameCoordinator]   - countdownValue: \(state.countdownValue), phase: \(state.phase)")
 
-        countdownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] timer in
+        // Use .common mode so timer fires even during UI animations (like sheet dismissal)
+        // This fixes the bug where games wouldn't start when launched directly from the launcher
+        let timer = Timer(timeInterval: 1.0, repeats: true) { [weak self] timer in
             guard let self = self else {
                 print("🎱 [TiltTableGameCoordinator] ⚠️ Timer fired but self is nil!")
                 timer.invalidate()
@@ -104,6 +106,8 @@ final class TiltTableGameCoordinator {
                 print("🎱 [TiltTableGameCoordinator]   - isRunning: \(self.isRunning)")
             }
         }
+        RunLoop.main.add(timer, forMode: .common)
+        countdownTimer = timer
         print("🎱 [TiltTableGameCoordinator]   - Timer created: \(countdownTimer != nil ? "EXISTS" : "NIL")")
     }
 
