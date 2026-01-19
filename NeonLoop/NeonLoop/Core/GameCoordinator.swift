@@ -18,6 +18,7 @@ enum AppState: Equatable {
     case playing            // Active game (Polygon Hockey)
     case playingTiltTable   // Tilt Table game
     case playingBilliardDodge   // Billiard Dodge game
+    case playingHordeDefense    // Horde Defense game
     case placeholderGame(GameInfo)  // Placeholder for unimplemented games
 }
 
@@ -31,6 +32,7 @@ extension AppState {
         case (.playing, .playing): return true
         case (.playingTiltTable, .playingTiltTable): return true
         case (.playingBilliardDodge, .playingBilliardDodge): return true
+        case (.playingHordeDefense, .playingHordeDefense): return true
         case (.placeholderGame(let lhsGame), .placeholderGame(let rhsGame)):
             return lhsGame.id == rhsGame.id
         default: return false
@@ -53,6 +55,9 @@ final class GameCoordinator {
 
     // Billiard Dodge game coordinator (initialized when launching Billiard Dodge)
     var billiardDodgeCoordinator: BilliardDodgeGameCoordinator?
+
+    // Horde Defense game coordinator (initialized when launching Horde Defense)
+    var hordeDefenseCoordinator: HordeDefenseGameCoordinator?
 
     // Game loop
     private var displayLink: CADisplayLink?
@@ -84,9 +89,11 @@ final class GameCoordinator {
         print("🔵 [GameCoordinator]   - Current appState: \(appState)")
         print("🔵 [GameCoordinator]   - tiltTableCoordinator before stop: \(tiltTableCoordinator != nil ? "EXISTS" : "NIL")")
         print("🔵 [GameCoordinator]   - billiardDodgeCoordinator before stop: \(billiardDodgeCoordinator != nil ? "EXISTS" : "NIL")")
+        print("🔵 [GameCoordinator]   - hordeDefenseCoordinator before stop: \(hordeDefenseCoordinator != nil ? "EXISTS" : "NIL")")
         stopGameLoop()
         stopTiltTable()
         stopBilliardDodge()
+        stopHordeDefense()
         appState = .launcher
         print("🔵 [GameCoordinator]   - New appState: \(appState)")
     }
@@ -213,6 +220,60 @@ final class GameCoordinator {
         billiardDodgeCoordinator?.startGame()
         print("🟣 [GameCoordinator]   - Coordinator created and started")
         print("🟣 [GameCoordinator]   - Phase: \(String(describing: billiardDodgeCoordinator?.state.phase))")
+    }
+
+    // MARK: - Horde Defense
+
+    func launchHordeDefense() {
+        print("🟢 [GameCoordinator] launchHordeDefense() CALLED")
+        print("🟢 [GameCoordinator]   - Current appState: \(appState)")
+        print("🟢 [GameCoordinator]   - hordeDefenseCoordinator before: \(hordeDefenseCoordinator != nil ? "EXISTS" : "NIL")")
+
+        stopGameLoop()
+
+        // Initialize the Horde Defense game coordinator
+        // CRITICAL: Complete all initialization BEFORE changing app state
+        // This follows the working pattern from Polygon Hockey to avoid race conditions
+        print("🟢 [GameCoordinator]   - Creating HordeDefenseGameCoordinator...")
+        hordeDefenseCoordinator = HordeDefenseGameCoordinator()
+        print("🟢 [GameCoordinator]   - hordeDefenseCoordinator after create: \(hordeDefenseCoordinator != nil ? "EXISTS" : "NIL")")
+
+        print("🟢 [GameCoordinator]   - Calling setupSinglePlayer()...")
+        hordeDefenseCoordinator?.setupSinglePlayer()
+
+        // Note: We don't start the game immediately - the settings view will show first
+        // The game starts when the player presses "Start Game" in settings
+        print("🟢 [GameCoordinator]   - Phase: \(String(describing: hordeDefenseCoordinator?.state.phase))")
+
+        print("🟢 [GameCoordinator]   - Setting appState to .playingHordeDefense")
+        appState = .playingHordeDefense
+        print("🟢 [GameCoordinator] launchHordeDefense() COMPLETE")
+    }
+
+    func stopHordeDefense() {
+        print("🔴 [GameCoordinator] stopHordeDefense() called")
+        print("🔴 [GameCoordinator]   - hordeDefenseCoordinator: \(hordeDefenseCoordinator != nil ? "EXISTS" : "NIL")")
+        hordeDefenseCoordinator?.stopGame()
+        hordeDefenseCoordinator = nil
+        print("🔴 [GameCoordinator]   - hordeDefenseCoordinator after nil: \(hordeDefenseCoordinator != nil ? "EXISTS" : "NIL")")
+    }
+
+    /// Initialize Horde Defense coordinator without changing app state.
+    /// Called as a fallback when the view appears before the coordinator is ready.
+    func initializeHordeDefenseIfNeeded() {
+        print("🟣 [GameCoordinator] initializeHordeDefenseIfNeeded() called")
+        print("🟣 [GameCoordinator]   - hordeDefenseCoordinator: \(hordeDefenseCoordinator != nil ? "EXISTS" : "NIL")")
+
+        guard hordeDefenseCoordinator == nil else {
+            print("🟣 [GameCoordinator]   - Coordinator already exists, skipping")
+            return
+        }
+
+        print("🟣 [GameCoordinator]   - Creating HordeDefenseGameCoordinator...")
+        hordeDefenseCoordinator = HordeDefenseGameCoordinator()
+        hordeDefenseCoordinator?.setupSinglePlayer()
+        print("🟣 [GameCoordinator]   - Coordinator created")
+        print("🟣 [GameCoordinator]   - Phase: \(String(describing: hordeDefenseCoordinator?.state.phase))")
     }
 
     func startSinglePlayerGame(difficulty: Difficulty, mode: GameMode = .oneVsOne) {

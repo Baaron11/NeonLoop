@@ -49,6 +49,10 @@ struct ContentView: View {
                 let _ = print("📱 [ContentView]   → Showing BilliardDodgeGameView")
                 let _ = print("📱 [ContentView]   → billiardDodgeCoordinator at switch: \(coordinator.billiardDodgeCoordinator != nil ? "EXISTS" : "NIL")")
                 BilliardDodgeGameView()
+            case .playingHordeDefense:
+                let _ = print("📱 [ContentView]   → Showing HordeDefenseGameView")
+                let _ = print("📱 [ContentView]   → hordeDefenseCoordinator at switch: \(coordinator.hordeDefenseCoordinator != nil ? "EXISTS" : "NIL")")
+                HordeDefenseGameView()
             case .placeholderGame(let gameInfo):
                 PlaceholderGameView(gameInfo: gameInfo)
             }
