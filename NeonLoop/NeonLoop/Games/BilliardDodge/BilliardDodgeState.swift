@@ -249,8 +249,13 @@ final class BilliardDodgeState {
     init(config: BilliardDodgeConfig = .default, playerCount: Int = 1) {
         self.config = config
         self.balls = []
-        self.cueBall = .cueBall(position: CGPoint(x: config.tableWidth * 0.25, y: config.tableHeight / 2))
-        self.cueBalls = [self.cueBall]
+        // Create cue ball as local variable first to avoid accessing self before initialization
+        let initialCueBall = BilliardBall.cueBall(position: CGPoint(
+            x: config.tableWidth * 0.25,
+            y: config.tableHeight / 2
+        ))
+        self.cueBall = initialCueBall
+        self.cueBalls = [initialCueBall]
         self.obstacleBalls = []
         self.currentRound = 1
         self.totalRounds = config.roundsToWin(playerCount: playerCount)

@@ -17,10 +17,32 @@ enum BilliardDodgePhysics {
 
     // MARK: - Main Physics Step
 
+    /// Number of substeps per frame for stable collision detection
+    /// Higher values prevent fast balls from passing through each other
+    private static let substeps = 4
+
     /// Updates all ball positions and handles collisions for one frame
+    /// Uses substeps for more accurate collision detection with fast-moving balls
     static func step(state: BilliardDodgeState, deltaTime: CGFloat) {
         let config = state.config
+        let subDelta = deltaTime / CGFloat(substeps)
 
+        for _ in 0..<substeps {
+            // Move all balls
+            moveBalls(state: state, config: config, deltaTime: subDelta)
+
+            // Check and resolve all collisions
+            handleCollisions(state: state, config: config)
+
+            // Check wall bounces (already handled in moveBalls via handleRailBounce)
+
+            // Check pockets
+            checkPockets(state: state, config: config)
+        }
+    }
+
+    /// Moves all balls by the given delta time
+    private static func moveBalls(state: BilliardDodgeState, config: BilliardDodgeConfig, deltaTime: CGFloat) {
         // Update all cue balls
         for i in state.cueBalls.indices {
             if !state.cueBalls[i].isPocketed {
@@ -41,12 +63,6 @@ enum BilliardDodgePhysics {
         for i in state.obstacleBalls.indices {
             updateObstacleBall(&state.obstacleBalls[i], config: config, deltaTime: deltaTime)
         }
-
-        // Handle ball-to-ball collisions
-        handleCollisions(state: state, config: config)
-
-        // Check pocket collisions
-        checkPockets(state: state, config: config)
     }
 
     // MARK: - Ball Update
@@ -173,48 +189,62 @@ enum BilliardDodgePhysics {
         state.cueBall = state.cueBalls[0]
     }
 
+    /// Resolves collision between two balls with proper elastic collision physics
+    /// Key improvements:
+    /// 1. Separates balls immediately to prevent visual clipping
+    /// 2. Proper momentum transfer along collision normal
+    /// 3. Realistic ~95% energy retention (coefficient of restitution)
+    /// 4. "Moving apart" check prevents double-collision resolution
     private static func checkAndResolveCollision(_ ball1: inout BilliardBall, _ ball2: inout BilliardBall, config: BilliardDodgeConfig) -> Bool {
         let dx = ball2.position.x - ball1.position.x
         let dy = ball2.position.y - ball1.position.y
         let distance = sqrt(dx * dx + dy * dy)
         let minDistance = config.ballRadius * 2
 
+        // Check if actually colliding
         guard distance < minDistance && distance > 0 else { return false }
 
-        // Normalize collision vector
+        // 1. Calculate collision normal (unit vector from ball1 to ball2)
         let nx = dx / distance
         let ny = dy / distance
 
-        // Relative velocity
-        let dvx = ball1.velocity.dx - ball2.velocity.dx
-        let dvy = ball1.velocity.dy - ball2.velocity.dy
-
-        // Relative velocity along collision normal
-        let dvn = dvx * nx + dvy * ny
-
-        // Don't resolve if velocities are separating
-        if dvn > 0 { return false }
-
-        // Coefficient of restitution
-        let restitution = config.ballBounce
-
-        // Impulse scalar (assuming equal masses)
-        let impulse = -(1 + restitution) * dvn / 2
-
-        // Apply impulse
-        ball1.velocity.dx += impulse * nx
-        ball1.velocity.dy += impulse * ny
-        ball2.velocity.dx -= impulse * nx
-        ball2.velocity.dy -= impulse * ny
-
-        // Separate balls to prevent overlap
+        // 2. IMPORTANT: Separate balls so they don't overlap (fixes clipping)
         let overlap = minDistance - distance
-        let separationX = (overlap / 2 + 0.5) * nx
+        let separationX = (overlap / 2 + 0.5) * nx  // +0.5 for small buffer
         let separationY = (overlap / 2 + 0.5) * ny
+
         ball1.position.x -= separationX
         ball1.position.y -= separationY
         ball2.position.x += separationX
         ball2.position.y += separationY
+
+        // 3. Calculate relative velocity
+        let dvx = ball1.velocity.dx - ball2.velocity.dx
+        let dvy = ball1.velocity.dy - ball2.velocity.dy
+
+        // 4. Calculate relative velocity along collision normal
+        let dvNormal = dvx * nx + dvy * ny
+
+        // 5. Don't resolve if balls are moving apart
+        guard dvNormal > 0 else { return true }  // Still return true since we separated them
+
+        // 6. Calculate impulse (assuming equal mass balls)
+        // Coefficient of restitution for pool balls is ~0.95
+        let restitution: CGFloat = 0.95
+        let impulse = (1 + restitution) * dvNormal / 2
+
+        // 7. Apply impulse to velocities
+        ball1.velocity.dx -= impulse * nx
+        ball1.velocity.dy -= impulse * ny
+        ball2.velocity.dx += impulse * nx
+        ball2.velocity.dy += impulse * ny
+
+        // 8. Add slight energy loss for realism
+        let energyLoss: CGFloat = 0.98
+        ball1.velocity.dx *= energyLoss
+        ball1.velocity.dy *= energyLoss
+        ball2.velocity.dx *= energyLoss
+        ball2.velocity.dy *= energyLoss
 
         return true
     }
