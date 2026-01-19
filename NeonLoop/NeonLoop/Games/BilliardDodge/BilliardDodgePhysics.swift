@@ -106,8 +106,14 @@ enum BilliardDodgePhysics {
         // Check all pairs for collisions
         for i in 0..<allBalls.count {
             for j in (i + 1)..<allBalls.count {
-                if checkAndResolveCollision(&allBalls[i], &allBalls[j], config: config) {
-                    // Collision occurred, update the state
+                // Extract balls to local variables to avoid exclusivity error
+                var ball1 = allBalls[i]
+                var ball2 = allBalls[j]
+
+                if checkAndResolveCollision(&ball1, &ball2, config: config) {
+                    // Write modified balls back to array
+                    allBalls[i] = ball1
+                    allBalls[j] = ball2
                 }
             }
         }
