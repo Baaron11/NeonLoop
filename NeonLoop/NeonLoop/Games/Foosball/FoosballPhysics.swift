@@ -230,7 +230,7 @@ enum FoosballPhysics {
             return
         }
 
-        for (index, pos) in positions.enumerated() {
+        for pos in positions {
             // Get rotation from kick state
             let rotation = rod.kickState.currentRotation
 
@@ -339,7 +339,7 @@ enum FoosballPhysics {
 
     // MARK: - Goal Detection
 
-    static func checkGoal(ball: FoosballBall, config: FoosballConfig) -> GoalResult? {
+    static func checkGoal(ball: FoosballBall, config: FoosballConfig) -> FoosballGoalResult? {
         let halfHeight = config.tableHeight / 2
         let goalHalfWidth = config.goalWidth / 2
         let radius = config.ballRadius
