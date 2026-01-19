@@ -55,7 +55,7 @@ struct FoosballSettingsView: View {
                 SettingsSection(title: "DIFFICULTY") {
                     HStack(spacing: 12) {
                         ForEach(FoosballDifficulty.allCases, id: \.self) { difficulty in
-                            DifficultyButton(
+                            FoosballDifficultyButton(
                                 difficulty: difficulty,
                                 isSelected: selectedDifficulty == difficulty
                             ) {
@@ -201,9 +201,9 @@ private struct SettingsSection<Content: View>: View {
     }
 }
 
-// MARK: - Difficulty Button
+// MARK: - Foosball Difficulty Button
 
-private struct DifficultyButton: View {
+private struct FoosballDifficultyButton: View {
     let difficulty: FoosballDifficulty
     let isSelected: Bool
     let action: () -> Void
