@@ -76,7 +76,7 @@ struct FoosballGameView: View {
 
                         // Game over overlay
                         if case .gameOver(let playerWon) = coordinator.state.phase {
-                            GameOverOverlay(
+                            FoosballGameOverOverlay(
                                 playerWon: playerWon,
                                 playerScore: coordinator.state.playerScore,
                                 aiScore: coordinator.state.aiScore,
@@ -198,7 +198,7 @@ struct FoosballGameView: View {
             }
 
             // Ball
-            BallView(ball: state.ball, config: config)
+            FoosballBallView(ball: state.ball, config: config)
                 .scaleEffect(scale)
         }
         .frame(width: config.tableWidth * scale, height: config.tableHeight * scale)
@@ -481,7 +481,7 @@ private struct FoosmanView: View {
 
 // MARK: - Ball View
 
-private struct BallView: View {
+private struct FoosballBallView: View {
     let ball: FoosballBall
     let config: FoosballConfig
 
@@ -591,7 +591,7 @@ private struct GoalScoredOverlay: View {
 
 // MARK: - Game Over Overlay
 
-private struct GameOverOverlay: View {
+private struct FoosballGameOverOverlay: View {
     let playerWon: Bool
     let playerScore: Int
     let aiScore: Int
